@@ -111,6 +111,7 @@ export interface Order {
   refundedAt?: string
   refundDate?: string
   reversalShiftId?: string
+  receiptToken?: string
 }
 
 export interface Ingredient {

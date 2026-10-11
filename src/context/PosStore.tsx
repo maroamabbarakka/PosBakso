@@ -44,6 +44,9 @@ import {
   reduceSaveOrder,
   reduceUpdateOrder,
   reduceVoidOrder,
+  reduceOpenShift,
+  reduceCloseShift,
+  reduceAddCashMovement,
 } from '../domain/salesReducers'
 import { recoverPrintJobs } from '../services/printer'
 
@@ -111,9 +114,9 @@ interface StoreContextValue {
   updateOrder: (order: Order) => Promise<void>
   voidOrder: (orderId: string, reason: string) => Promise<void>
   refundOrder: (orderId: string, reason: string) => Promise<void>
-  openShift: (openingCash: number) => Shift | null
-  closeShift: (actualCash: number, note?: string) => void
-  addCashMovement: (type: 'in' | 'out', amount: number, note: string) => void
+  openShift: (openingCash: number) => Promise<Shift | null>
+  closeShift: (actualCash: number, note?: string) => Promise<void>
+  addCashMovement: (type: 'in' | 'out', amount: number, note: string) => Promise<void>
   upsertProduct: (product: Product) => void
   upsertIngredient: (ingredient: Ingredient) => void
   upsertRecipe: (recipe: Recipe) => void
@@ -167,8 +170,24 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
   const pendingIndexRef = useRef(new PendingMutationIndex())
 
   const commandExecutor = useMemo(
-    () => new CommandExecutor(() => dataRef.current, next => setData(next)),
+    () =>
+      new CommandExecutor(dataRef.current, next => {
+        dataRef.current = next
+        setData(next)
+      }),
     []
+  )
+
+  const updateStoreData = useCallback(
+    (updater: AppData | ((prev: AppData) => AppData)) => {
+      setData(prev => {
+        const next = typeof updater === 'function' ? updater(prev) : updater
+        dataRef.current = next
+        commandExecutor.setCanonicalState(next)
+        return next
+      })
+    },
+    [commandExecutor]
   )
 
   const currentUser = useMemo(
@@ -187,8 +206,8 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
     let active = true
     loadSnapshot().then(async snapshot => {
       if (!active) return
-      if (snapshot && (demoMode || !looksLikeDemoSnapshot(snapshot))) setData(normalizeAppData(snapshot))
-      else if (!demoMode) setData(emptyProductionData())
+      if (snapshot && (demoMode || !looksLikeDemoSnapshot(snapshot))) updateStoreData(normalizeAppData(snapshot))
+      else if (!demoMode) updateStoreData(emptyProductionData())
       setHydrated(true)
       await purgeLocalOnlyMutations(['printers'])
       const queue = await readSyncQueue()
@@ -241,7 +260,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
           await signOut(activeAuth)
           return
         }
-        setData(prev => ({
+        updateStoreData(prev => ({
           ...prev,
           users: prev.users.some(u => u.id === profile.id)
             ? prev.users.map(u => (u.id === profile.id ? profile : u))
@@ -268,7 +287,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
           readCollection<CashMovement>('cash_movements', 150, 'createdAt'),
           readCollection<StockMovement>('stock_movements', 200, 'createdAt'),
         ])
-        setData(prev => {
+        updateStoreData(prev => {
           const val = <T,>(index: number, fallback: T): T =>
             results[index].status === 'fulfilled'
               ? (results[index] as PromiseFulfilledResult<T>).value
@@ -329,7 +348,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
             return
           }
           const profile = { id: snap.id, ...snap.data() } as UserProfile
-          setData(prev => ({
+          updateStoreData(prev => ({
             ...prev,
             users: prev.users.some(u => u.id === profile.id)
               ? prev.users.map(u => (u.id === profile.id ? profile : u))
@@ -344,7 +363,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         query(collection(db, 'roles'), limit(30)),
         snap => {
           const remote = snap.docs.map(d => ({ key: d.id, ...d.data() } as RoleDefinition))
-          if (remote.length) setData(prev => ({ ...prev, roles: remote }))
+          if (remote.length) updateStoreData(prev => ({ ...prev, roles: remote }))
         },
         noopError
       )
@@ -357,7 +376,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
           snap => {
             const pendingIds = pendingIndexRef.current.getPendingIds('orders')
             const remote = snap.docs.map(d => normalizeOrder({ id: d.id, ...d.data() } as Order))
-            setData(prev => ({
+            updateStoreData(prev => ({
               ...prev,
               orders: mergeCollection(prev.orders, remote, pendingIds).sort((a, b) =>
                 b.updatedAt.localeCompare(a.updatedAt)
@@ -386,7 +405,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
             const value = { id: d.id, ...d.data() } as Ingredient
             return { ...value, stock: value.stock + (deltas.get(value.id) ?? 0) }
           })
-          setData(prev => ({
+          updateStoreData(prev => ({
             ...prev,
             ingredients: mergeCollection(prev.ingredients, remote, pendingSets),
           }))
@@ -401,7 +420,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         snap => {
           const pending = pendingIndexRef.current.getPendingIds('products')
           const remote = snap.docs.map(d => ({ id: d.id, ...d.data() } as Product))
-          setData(prev => ({ ...prev, products: mergeCollection(prev.products, remote, pending) }))
+          updateStoreData(prev => ({ ...prev, products: mergeCollection(prev.products, remote, pending) }))
         },
         noopError
       )
@@ -413,7 +432,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         snap => {
           const pending = pendingIndexRef.current.getPendingIds('recipes')
           const remote = snap.docs.map(d => ({ productId: d.id, ...d.data() } as Recipe))
-          setData(prev => ({
+          updateStoreData(prev => ({
             ...prev,
             recipes: mergeCollection(
               prev.recipes.map(r => ({ id: r.productId, ...r })),
@@ -431,7 +450,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         doc(db, 'settings', 'outlet'),
         snap => {
           if (snap.exists()) {
-            setData(prev => ({
+            updateStoreData(prev => ({
               ...prev,
               settings: normalizeSettings(snap.data() as Partial<AppData['settings']>),
             }))
@@ -448,7 +467,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
           snap => {
             const pending = pendingIndexRef.current.getPendingIds('shifts')
             const remote = snap.docs.map(d => ({ id: d.id, ...d.data() } as Shift))
-            setData(prev => ({ ...prev, shifts: mergeCollection(prev.shifts, remote, pending) }))
+            updateStoreData(prev => ({ ...prev, shifts: mergeCollection(prev.shifts, remote, pending) }))
           },
           noopError
         )
@@ -527,10 +546,10 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
   const addAudit = useCallback(
     (action: string, entity: string, detail: string, severity: AuditEvent['severity'] = 'info', entityId?: string) => {
       const event = buildAuditEvent(action, entity, detail, severity, entityId)
-      setData(prev => ({ ...prev, audit: [event, ...prev.audit].slice(0, 1000) }))
+      updateStoreData(prev => ({ ...prev, audit: [event, ...prev.audit].slice(0, 1000) }))
       queueDoc('audit_logs', event.id, event)
     },
-    [buildAuditEvent, queueDoc]
+    [buildAuditEvent, queueDoc, updateStoreData]
   )
 
   const loginWithPin = useCallback(
@@ -542,11 +561,11 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       setCurrentUserId(user.id)
       sessionStorage.setItem('posbakso.currentUser', user.id)
       const updated = { ...user, lastLoginAt: new Date().toISOString() }
-      setData(prev => ({ ...prev, users: prev.users.map(u => (u.id === user.id ? updated : u)) }))
+      updateStoreData(prev => ({ ...prev, users: prev.users.map(u => (u.id === user.id ? updated : u)) }))
       queueDoc('users', user.id, { ...updated, pinHash: undefined })
       return true
     },
-    [data.users, queueDoc]
+    [data.users, queueDoc, updateStoreData]
   )
 
   const loginWithEmail = useCallback(
@@ -564,7 +583,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
           await signOut(auth)
           return { ok: false, message: 'Akun dinonaktifkan.' }
         }
-        setData(prev => ({
+        updateStoreData(prev => ({
           ...prev,
           users: prev.users.some(u => u.id === profile.id)
             ? prev.users.map(u => (u.id === profile.id ? profile : u))
@@ -657,79 +676,60 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
   )
 
   const openShift = useCallback(
-    (openingCash: number) => {
-      if (!currentUser || getOpenShift()) return null
-      const shift: Shift = {
-        id: uid('shift'),
-        cashierId: currentUser.id,
-        cashierName: currentUser.name,
-        openedAt: new Date().toISOString(),
-        openingCash,
-        status: 'open',
-      }
-      const auditEvent = buildAuditEvent('shift.open', 'shift', `Membuka shift dengan kas awal ${openingCash}`, 'info', shift.id)
-      setData(prev => ({ ...prev, shifts: [shift, ...prev.shifts], audit: [auditEvent, ...prev.audit].slice(0, 1000) }))
-      void queueBatch([
-        { collection: 'shifts', docId: shift.id, op: 'set', payload: shift },
-        { collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent },
-      ])
+    async (openingCash: number): Promise<Shift | null> => {
+      const shift = await commandExecutor.run(current => {
+        const result = reduceOpenShift(current, openingCash, currentUser)
+        if (!result.value) return { nextState: current, mutations: [], value: null }
+        pendingIndexRef.current.add(result.mutations)
+        return {
+          nextState: result.nextState,
+          mutations: result.mutations,
+          value: result.value,
+        }
+      })
+      void syncNow()
       return shift
     },
-    [buildAuditEvent, currentUser, getOpenShift, queueBatch]
+    [commandExecutor, currentUser, syncNow]
   )
 
   const closeShift = useCallback(
-    (actualCash: number, note?: string) => {
-      const shift = getOpenShift()
-      if (!shift) return
-      const updated: Shift = { ...shift, actualClosingCash: actualCash, closedAt: new Date().toISOString(), status: 'closed', note }
-      const auditEvent = buildAuditEvent('shift.close', 'shift', `Menutup shift • kas aktual ${actualCash}`, 'warning', shift.id)
-      setData(prev => ({ ...prev, shifts: prev.shifts.map(s => (s.id === shift.id ? updated : s)), audit: [auditEvent, ...prev.audit].slice(0, 1000) }))
-      void queueBatch([
-        { collection: 'shifts', docId: updated.id, op: 'set', payload: updated },
-        { collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent },
-      ])
+    async (actualCash: number, note?: string): Promise<void> => {
+      await commandExecutor.run(current => {
+        const result = reduceCloseShift(current, actualCash, note, currentUser)
+        if (!result.value) return { nextState: current, mutations: [], value: null }
+        pendingIndexRef.current.add(result.mutations)
+        return {
+          nextState: result.nextState,
+          mutations: result.mutations,
+          value: result.value,
+        }
+      })
+      void syncNow()
     },
-    [buildAuditEvent, getOpenShift, queueBatch]
+    [commandExecutor, currentUser, syncNow]
   )
 
   const addCashMovement = useCallback(
-    (type: 'in' | 'out', amount: number, note: string) => {
-      const shift = getOpenShift()
-      if (!shift || !currentUser || amount <= 0) return
-      const movement: CashMovement = {
-        id: uid('cash'),
-        shiftId: shift.id,
-        type,
-        amount,
-        note,
-        createdAt: new Date().toISOString(),
-        userId: currentUser.id,
-        userName: currentUser.name,
-      }
-      const auditEvent = buildAuditEvent(
-        `cash.${type}`,
-        'shift',
-        `${type === 'in' ? 'Kas masuk' : 'Kas keluar'} ${amount} • ${note}`,
-        'warning',
-        shift.id
-      )
-      setData(prev => ({
-        ...prev,
-        cashMovements: [movement, ...prev.cashMovements],
-        audit: [auditEvent, ...prev.audit].slice(0, 1000),
-      }))
-      void queueBatch([
-        { collection: 'cash_movements', docId: movement.id, op: 'set', payload: movement },
-        { collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent },
-      ])
+    async (type: 'in' | 'out', amount: number, note: string): Promise<void> => {
+      await commandExecutor.run(current => {
+        const result = reduceAddCashMovement(current, type, amount, note, currentUser)
+        if (!result.value) return { nextState: current, mutations: [], value: null }
+        pendingIndexRef.current.add(result.mutations)
+        return {
+          nextState: result.nextState,
+          mutations: result.mutations,
+          value: result.value,
+        }
+      })
+      void syncNow()
     },
-    [buildAuditEvent, currentUser, getOpenShift, queueBatch]
+    [commandExecutor, currentUser, syncNow]
   )
 
   const upsertProduct = useCallback(
     (product: Product) => {
-      setData(prev => ({
+      updateStoreData(prev => ({
         ...prev,
         products: prev.products.some(p => p.id === product.id)
           ? prev.products.map(p => (p.id === product.id ? product : p))
@@ -738,7 +738,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       queueDoc('products', product.id, product)
       addAudit('product.save', 'product', `Menyimpan produk ${product.name}`, 'info', product.id)
     },
-    [addAudit, queueDoc]
+    [addAudit, queueDoc, updateStoreData]
   )
 
   const upsertIngredient = useCallback(
@@ -747,7 +747,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       const safe: Ingredient = existing
         ? { ...ingredient, stock: existing.stock, averageCost: existing.averageCost, updatedAt: new Date().toISOString() }
         : { ...ingredient, stock: ingredient.stock || 0, updatedAt: new Date().toISOString() }
-      setData(prev => ({
+      updateStoreData(prev => ({
         ...prev,
         ingredients: prev.ingredients.some(i => i.id === safe.id)
           ? prev.ingredients.map(i => (i.id === safe.id ? safe : i))
@@ -756,7 +756,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       queueDoc('ingredients', safe.id, safe)
       addAudit('ingredient.save', 'ingredient', `Menyimpan master bahan ${safe.name} (stok/HPP hanya melalui movement)`, 'info', safe.id)
     },
-    [addAudit, data.ingredients, queueDoc]
+    [addAudit, data.ingredients, queueDoc, updateStoreData]
   )
 
   const upsertRecipe = useCallback(
@@ -766,7 +766,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       )
       const currentProduct = data.products.find(p => p.id === recipe.productId)
       const updatedProduct = currentProduct ? { ...currentProduct, cost: calculatedCost } : undefined
-      setData(prev => ({
+      updateStoreData(prev => ({
         ...prev,
         recipes: prev.recipes.some(r => r.productId === recipe.productId)
           ? prev.recipes.map(r => (r.productId === recipe.productId ? recipe : r))
@@ -780,12 +780,12 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       void queueBatch(mutations)
       addAudit('recipe.save', 'recipe', `Memperbarui resep/BOM ${currentProduct?.name ?? recipe.productId}`, 'info', recipe.productId)
     },
-    [addAudit, data.ingredients, data.products, queueBatch]
+    [addAudit, data.ingredients, data.products, queueBatch, updateStoreData]
   )
 
   const upsertSupplier = useCallback(
     (supplier: Supplier) => {
-      setData(prev => ({
+      updateStoreData(prev => ({
         ...prev,
         suppliers: prev.suppliers.some(s => s.id === supplier.id)
           ? prev.suppliers.map(s => (s.id === supplier.id ? supplier : s))
@@ -794,16 +794,16 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       queueDoc('suppliers', supplier.id, supplier)
       addAudit('supplier.save', 'supplier', `Menyimpan supplier ${supplier.name}`, 'info', supplier.id)
     },
-    [addAudit, queueDoc]
+    [addAudit, queueDoc, updateStoreData]
   )
 
   const updateRole = useCallback(
     (role: RoleDefinition) => {
-      setData(prev => ({ ...prev, roles: prev.roles.map(r => (r.key === role.key ? role : r)) }))
+      updateStoreData(prev => ({ ...prev, roles: prev.roles.map(r => (r.key === role.key ? role : r)) }))
       queueDoc('roles', role.key, role)
       addAudit('role.permissions', 'role', `Memperbarui permission ${role.label}`, 'critical', role.key)
     },
-    [addAudit, queueDoc]
+    [addAudit, queueDoc, updateStoreData]
   )
 
   const toggleProduct = useCallback(
@@ -849,7 +849,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
 
   const upsertUser = useCallback(
     (user: UserProfile) => {
-      setData(prev => ({
+      updateStoreData(prev => ({
         ...prev,
         users: prev.users.some(u => u.id === user.id) ? prev.users.map(u => (u.id === user.id ? user : u)) : [user, ...prev.users],
       }))
@@ -857,7 +857,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       queueDoc('users', user.id, cloudUser)
       addAudit('user.save', 'user', `Menyimpan pengguna ${user.name}`, 'warning', user.id)
     },
-    [addAudit, queueDoc]
+    [addAudit, queueDoc, updateStoreData]
   )
 
   const toggleUser = useCallback(
@@ -871,21 +871,21 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
 
   const updatePrinter = useCallback((printer: PrinterConfig) => {
     const safe = { ...printer, connected: false }
-    setData(prev => ({
+    updateStoreData(prev => ({
       ...prev,
       printers: prev.printers.some(p => p.id === safe.id)
         ? prev.printers.map(p => (p.id === safe.id ? safe : p))
         : [safe, ...prev.printers],
     }))
-  }, [])
+  }, [updateStoreData])
 
   const updateSettings = useCallback(
     (settings: AppData['settings']) => {
-      setData(prev => ({ ...prev, settings }))
+      updateStoreData(prev => ({ ...prev, settings }))
       queueDoc('settings', 'outlet', settings)
       addAudit('settings.save', 'settings', 'Memperbarui profil dan konfigurasi outlet', 'warning', 'outlet')
     },
-    [addAudit, queueDoc]
+    [addAudit, queueDoc, updateStoreData]
   )
 
   const seedCloudMasterData = useCallback(async () => {
@@ -956,7 +956,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         Boolean(snapshot.settings)
       if (!valid || (!demoMode && looksLikeDemoSnapshot(snapshot))) return false
       const normalized = normalizeAppData(snapshot)
-      setData(normalized)
+      updateStoreData(normalized)
       await saveSnapshot(normalized)
       if (cloudSyncEnabled && currentUser?.role === 'owner' && can('backup.restore')) {
         const stripPin = (u: UserProfile) => {
@@ -983,15 +983,15 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       }
       return true
     },
-    [can, currentUser?.role, queueBatch, syncNow]
+    [can, currentUser?.role, queueBatch, syncNow, updateStoreData]
   )
 
   const resetDemo = useCallback(async () => {
     if (!demoMode) return
     const fresh = normalizeAppData(cloneSeed())
-    setData(fresh)
+    updateStoreData(fresh)
     await saveSnapshot(fresh)
-  }, [])
+  }, [updateStoreData])
 
   const value = useMemo<StoreContextValue>(
     () => ({

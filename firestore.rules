@@ -153,12 +153,25 @@ service cloud.firestore {
       allow create: if activeUser() && request.resource.data.userId == request.auth.uid && isNum(request.resource.data.mutationCount) && request.resource.data.mutationCount > 0;
       allow update, delete: if false;
     }
+    function receiptOrder(orderId) {
+      return get(/databases/$(database)/documents/orders/$(orderId));
+    }
     match /public_receipts/{token} {
       allow get: if true;
       allow list: if false;
       allow create: if (hasPermission('sale.create') || canRestore()) &&
-        (request.resource.data.createdBy == request.auth.uid || canRestore()) &&
-        validMoney(request.resource.data.total);
+        (
+          canRestore() ||
+          (
+            request.resource.data.orderId is string &&
+            request.resource.data.createdBy == request.auth.uid &&
+            validMoney(request.resource.data.total) &&
+            exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId)) &&
+            receiptOrder(request.resource.data.orderId).data.status == 'paid' &&
+            receiptOrder(request.resource.data.orderId).data.cashierId == request.auth.uid &&
+            receiptOrder(request.resource.data.orderId).data.total == request.resource.data.total
+          )
+        );
       allow update, delete: if false;
     }
     match /{document=**} { allow read, write: if false; }

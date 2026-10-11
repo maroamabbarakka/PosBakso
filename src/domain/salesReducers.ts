@@ -15,6 +15,16 @@ import { paymentMethodAmount } from '../lib/order.ts'
 import { weightedAverageCost } from '../lib/domainMath.ts'
 import type { SyncMutation } from '../lib/localDb.ts'
 
+export function generateReceiptToken(): string {
+  const bytes = new Uint8Array(24)
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
+  }
+  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
 export function orderConsumption(prev: AppData, order: Order): Map<string, number> {
   const map = new Map<string, number>()
   order.items.forEach(line => {
@@ -119,22 +129,28 @@ export function reduceSaveOrder(
     stockResult = applyConsumptionDelta(current, delta, effective, actor, `Perubahan pesanan ${effective.number}`)
   }
 
+  const receiptToken = effective.status === 'paid'
+    ? (effective.receiptToken || generateReceiptToken())
+    : effective.receiptToken
+
+  const finalOrder: Order = receiptToken ? { ...effective, receiptToken } : effective
+
   const now = new Date().toISOString()
   const auditEvent: AuditEvent = {
     id: uid('audit'),
     createdAt: now,
     userId: actor?.id ?? 'system',
     userName: actor?.name ?? 'System',
-    action: effective.status === 'paid' ? 'sale.completed' : existing ? 'order.updated' : 'order.held',
+    action: finalOrder.status === 'paid' ? 'sale.completed' : existing ? 'order.updated' : 'order.held',
     entity: 'order',
-    entityId: effective.id,
-    detail: `${effective.status === 'paid' ? 'Menyelesaikan' : existing ? 'Memperbarui' : 'Menyimpan'} ${effective.number} • ${effective.total}`,
+    entityId: finalOrder.id,
+    detail: `${finalOrder.status === 'paid' ? 'Menyelesaikan' : existing ? 'Memperbarui' : 'Menyimpan'} ${finalOrder.number} • ${finalOrder.total}`,
     severity: 'info',
   }
 
   const baseOrders = existing
-    ? current.orders.map(o => (o.id === effective.id ? effective : o))
-    : [effective, ...current.orders]
+    ? current.orders.map(o => (o.id === finalOrder.id ? finalOrder : o))
+    : [finalOrder, ...current.orders]
 
   const nextState: AppData = {
     ...current,
@@ -146,9 +162,54 @@ export function reduceSaveOrder(
 
   const batchId = uid('batch')
   const mutations: SyncMutation[] = [
-    { id: uid('sync'), batchId, collection: 'orders', docId: effective.id, op: 'set', payload: effective, createdAt: now },
+    { id: uid('sync'), batchId, collection: 'orders', docId: finalOrder.id, op: 'set', payload: finalOrder, createdAt: now },
     { id: uid('sync'), batchId, collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent, createdAt: now },
   ]
+
+  // Jika order lunas, sertakan dokumen public_receipts yang sah dan immutable dalam outbox yang sama
+  if (finalOrder.status === 'paid' && finalOrder.receiptToken) {
+    mutations.push({
+      id: uid('sync'),
+      batchId,
+      collection: 'public_receipts',
+      docId: finalOrder.receiptToken,
+      op: 'set',
+      payload: {
+        v: 1,
+        orderId: finalOrder.id,
+        number: finalOrder.number,
+        queueNumber: finalOrder.queueNumber,
+        total: finalOrder.total,
+        subtotal: finalOrder.subtotal,
+        discount: finalOrder.discount,
+        tax: finalOrder.tax,
+        service: finalOrder.service,
+        createdAt: finalOrder.createdAt,
+        createdBy: finalOrder.cashierId,
+        brand: current.settings.brandName,
+        outlet: current.settings.outletName,
+        address: current.settings.address,
+        phone: current.settings.phone,
+        tagline: current.settings.tagline,
+        order: {
+          number: finalOrder.number,
+          queueNumber: finalOrder.queueNumber,
+          createdAt: finalOrder.createdAt,
+          type: finalOrder.type,
+          tableName: finalOrder.tableName,
+          customerName: finalOrder.customerName,
+          items: finalOrder.items,
+          subtotal: finalOrder.subtotal,
+          discount: finalOrder.discount,
+          tax: finalOrder.tax,
+          service: finalOrder.service,
+          total: finalOrder.total,
+          payments: finalOrder.payments ?? (finalOrder.payment ? [finalOrder.payment] : []),
+        },
+      },
+      createdAt: now,
+    })
+  }
 
   if (stockResult) {
     stockResult.stockDeltas.forEach(x =>
@@ -595,4 +656,129 @@ export function reduceReceivePurchase(
   })
 
   return { nextState, mutations }
+}
+
+export function reduceOpenShift(
+  current: AppData,
+  openingCash: number,
+  actor: UserProfile | null,
+): { nextState: AppData; mutations: SyncMutation[]; value: Shift | null } {
+  if (!actor || current.shifts.some(s => s.cashierId === actor.id && s.status === 'open')) {
+    return { nextState: current, mutations: [], value: null }
+  }
+  const now = new Date().toISOString()
+  const shift: Shift = {
+    id: uid('shift'),
+    cashierId: actor.id,
+    cashierName: actor.name,
+    openedAt: now,
+    openingCash,
+    status: 'open',
+  }
+  const auditEvent: AuditEvent = {
+    id: uid('audit'),
+    createdAt: now,
+    userId: actor.id,
+    userName: actor.name,
+    action: 'shift.open',
+    entity: 'shift',
+    entityId: shift.id,
+    detail: `Membuka shift dengan kas awal ${openingCash}`,
+    severity: 'info',
+  }
+  const nextState: AppData = {
+    ...current,
+    shifts: [shift, ...current.shifts],
+    audit: [auditEvent, ...current.audit].slice(0, 1000),
+  }
+  const batchId = uid('batch')
+  const mutations: SyncMutation[] = [
+    { id: uid('sync'), batchId, collection: 'shifts', docId: shift.id, op: 'set', payload: shift, createdAt: now },
+    { id: uid('sync'), batchId, collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent, createdAt: now },
+  ]
+  return { nextState, mutations, value: shift }
+}
+
+export function reduceCloseShift(
+  current: AppData,
+  actualCash: number,
+  note: string | undefined,
+  actor: UserProfile | null,
+): { nextState: AppData; mutations: SyncMutation[]; value: Shift | null } {
+  const shift = current.shifts.find(s => s.cashierId === actor?.id && s.status === 'open')
+  if (!shift || !actor) return { nextState: current, mutations: [], value: null }
+  const now = new Date().toISOString()
+  const updated: Shift = {
+    ...shift,
+    actualClosingCash: actualCash,
+    closedAt: now,
+    status: 'closed',
+    note,
+  }
+  const auditEvent: AuditEvent = {
+    id: uid('audit'),
+    createdAt: now,
+    userId: actor.id,
+    userName: actor.name,
+    action: 'shift.close',
+    entity: 'shift',
+    entityId: shift.id,
+    detail: `Menutup shift • kas aktual ${actualCash}`,
+    severity: 'warning',
+  }
+  const nextState: AppData = {
+    ...current,
+    shifts: current.shifts.map(s => (s.id === shift.id ? updated : s)),
+    audit: [auditEvent, ...current.audit].slice(0, 1000),
+  }
+  const batchId = uid('batch')
+  const mutations: SyncMutation[] = [
+    { id: uid('sync'), batchId, collection: 'shifts', docId: updated.id, op: 'set', payload: updated, createdAt: now },
+    { id: uid('sync'), batchId, collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent, createdAt: now },
+  ]
+  return { nextState, mutations, value: updated }
+}
+
+export function reduceAddCashMovement(
+  current: AppData,
+  type: 'in' | 'out',
+  amount: number,
+  note: string,
+  actor: UserProfile | null,
+): { nextState: AppData; mutations: SyncMutation[]; value: CashMovement | null } {
+  const shift = current.shifts.find(s => s.cashierId === actor?.id && s.status === 'open')
+  if (!shift || !actor || amount <= 0) return { nextState: current, mutations: [], value: null }
+  const now = new Date().toISOString()
+  const movement: CashMovement = {
+    id: uid('cash'),
+    shiftId: shift.id,
+    type,
+    amount,
+    note,
+    createdAt: now,
+    userId: actor.id,
+    userName: actor.name,
+  }
+  const auditEvent: AuditEvent = {
+    id: uid('audit'),
+    createdAt: now,
+    userId: actor.id,
+    userName: actor.name,
+    action: `cash.${type}`,
+    entity: 'shift',
+    entityId: shift.id,
+    detail: `${type === 'in' ? 'Kas masuk' : 'Kas keluar'} ${amount} • ${note}`,
+    severity: 'warning',
+  }
+  const nextState: AppData = {
+    ...current,
+    cashMovements: [movement, ...current.cashMovements],
+    audit: [auditEvent, ...current.audit].slice(0, 1000),
+  }
+  const batchId = uid('batch')
+  const mutations: SyncMutation[] = [
+    { id: uid('sync'), batchId, collection: 'cash_movements', docId: movement.id, op: 'set', payload: movement, createdAt: now },
+    { id: uid('sync'), batchId, collection: 'audit_logs', docId: auditEvent.id, op: 'set', payload: auditEvent, createdAt: now },
+  ]
+  return { nextState, mutations, value: movement }
 }

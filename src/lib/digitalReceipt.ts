@@ -1,8 +1,8 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore'
 import { cloudSyncEnabled, db } from './firebase'
-import type { Order, OutletSettings } from '../types'
-import { dateTimeId } from './format'
-import { itemLineTotal, orderPayments } from './order'
+import type { Order, OutletSettings } from '../types.ts'
+import { dateTimeId } from './format.ts'
+import { itemLineTotal, orderPayments } from './order.ts'
 
 export type PublicReceiptData = {
   v: 1
@@ -11,7 +11,29 @@ export type PublicReceiptData = {
   address: string
   phone: string
   tagline: string
-  order: Pick<Order, 'number' | 'queueNumber' | 'createdAt' | 'type' | 'tableName' | 'customerName' | 'items' | 'subtotal' | 'discount' | 'tax' | 'service' | 'total' | 'payments'>
+  order: Pick<
+    Order,
+    | 'number'
+    | 'queueNumber'
+    | 'createdAt'
+    | 'type'
+    | 'tableName'
+    | 'customerName'
+    | 'items'
+    | 'subtotal'
+    | 'discount'
+    | 'tax'
+    | 'service'
+    | 'total'
+    | 'payments'
+  >
+}
+
+export type PublicReceiptDocument = PublicReceiptData & {
+  orderId: string
+  createdBy: string
+  createdAt: string
+  total: number
 }
 
 export function randomReceiptToken(): string {
@@ -21,14 +43,19 @@ export function randomReceiptToken(): string {
   } else {
     for (let i = 0; i < bytes.length; i++) bytes[i] = Math.floor(Math.random() * 256)
   }
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  return Array.from(bytes)
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
 }
 
 const toBase64Url = (value: string) => {
   const bytes = new TextEncoder().encode(value)
   let binary = ''
-  bytes.forEach(byte => binary += String.fromCharCode(byte))
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  bytes.forEach(byte => (binary += String.fromCharCode(byte)))
+  return btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '')
 }
 
 const fromBase64Url = (value: string) => {
@@ -64,31 +91,42 @@ export function publicReceiptData(order: Order, settings: OutletSettings): Publi
 }
 
 /**
+ * Mengembalikan URL nota digital resmi yang aman.
+ * Jika order memiliki receiptToken (192-bit acak yang terverifikasi),
+ * gunakan token tersebut. URL ini tidak memuat payload Base64 mentah sehingga tidak bisa dipalsukan.
+ */
+export function onlineReceiptUrl(order: Order, settings?: OutletSettings): string {
+  if (order.receiptToken) {
+    return `${window.location.origin}/nota#${order.receiptToken}`
+  }
+  if (!settings) {
+    return `${window.location.origin}/nota#${order.id}`
+  }
+  // Fallback hanya untuk data historis lama sebelum sistem receiptToken aktif
+  return `${window.location.origin}/nota#${toBase64Url(JSON.stringify(publicReceiptData(order, settings)))}`
+}
+
+/**
  * Menerbitkan nota digital ke dokumen immutable Firestore public_receipts/{token}.
- * Token 192-bit tidak dapat ditebak dan hanya dokumen asli POS yang valid.
  */
 export async function publishDigitalReceipt(order: Order, settings: OutletSettings): Promise<string> {
-  const token = randomReceiptToken()
+  const token = order.receiptToken || randomReceiptToken()
   const payload = publicReceiptData(order, settings)
   if (cloudSyncEnabled && db) {
     try {
       await setDoc(doc(db, 'public_receipts', token), {
         ...payload,
+        orderId: order.id,
         total: order.total,
         createdBy: order.cashierId,
         createdAt: order.createdAt,
       })
       return `${window.location.origin}/nota#${token}`
     } catch {
-      // Fallback offline bila koneksi Firebase tidak aktif
+      // Abaikan bila offline, antrean mutasi outbox akan menyinkronkannya
     }
   }
-  return `${window.location.origin}/nota#${token}-${toBase64Url(JSON.stringify(payload))}`
-}
-
-export function onlineReceiptUrl(order: Order, settings: OutletSettings) {
-  // Jika offline atau pemanggilan sinkron, sertakan token prefix dengan payload terenkod
-  return `${window.location.origin}/nota#${toBase64Url(JSON.stringify(publicReceiptData(order, settings)))}`
+  return `${window.location.origin}/nota#${token}`
 }
 
 export function decodeOnlineReceipt(hash: string): PublicReceiptData | null {
@@ -126,7 +164,14 @@ export function normalizeWhatsappNumber(value: string) {
 
 export function digitalReceiptText(order: Order, settings: OutletSettings, url?: string) {
   const link = url || onlineReceiptUrl(order, settings)
-  const lines = [`*${settings.brandName}*`, settings.outletName, `Pesanan *${order.queueNumber}*`, `No. ${order.number}`, dateTimeId(order.createdAt), '']
+  const lines = [
+    `*${settings.brandName}*`,
+    settings.outletName,
+    `Pesanan *${order.queueNumber}*`,
+    `No. ${order.number}`,
+    dateTimeId(order.createdAt),
+    '',
+  ]
   order.items.forEach(item => {
     lines.push(`${item.qty}x ${item.name} — ${amount(itemLineTotal(item))}`)
     item.modifiers?.forEach(mod => lines.push(`   + ${mod.name}`))
@@ -139,7 +184,15 @@ export function digitalReceiptText(order: Order, settings: OutletSettings, url?:
   lines.push(`*TOTAL: ${amount(order.total)}*`)
   const payments = orderPayments(order)
   if (payments.length) lines.push(`Pembayaran: ${payments.map(p => p.label).join(' + ')}`)
-  lines.push('', `Nota online: ${link}`, order.kitchenStatus === 'ready' ? 'Pesanan sudah siap diambil.' : 'Pesanan telah kami terima dan sedang diproses.', settings.tagline || 'Terima kasih atas kunjungan Anda.', settings.phone ? `Kontak: ${settings.phone}` : '')
+  lines.push(
+    '',
+    `Nota online: ${link}`,
+    order.kitchenStatus === 'ready'
+      ? 'Pesanan sudah siap diambil.'
+      : 'Pesanan telah kami terima dan sedang diproses.',
+    settings.tagline || 'Terima kasih atas kunjungan Anda.',
+    settings.phone ? `Kontak: ${settings.phone}` : ''
+  )
   return lines.filter(line => line !== undefined).join('\n').trim()
 }
 
@@ -149,7 +202,9 @@ export function whatsappReceiptUrl(order: Order, settings: OutletSettings, phone
 }
 
 export function emailReceiptUrl(order: Order, settings: OutletSettings, email = order.customerEmail ?? '', url?: string) {
-  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(`Struk ${settings.brandName} — ${order.number}`)}&body=${encodeURIComponent(digitalReceiptText(order, settings, url))}`
+  return `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(
+    `Struk ${settings.brandName} — ${order.number}`
+  )}&body=${encodeURIComponent(digitalReceiptText(order, settings, url))}`
 }
 
 export async function shareDigitalReceipt(order: Order, settings: OutletSettings) {
@@ -160,7 +215,7 @@ export async function shareDigitalReceipt(order: Order, settings: OutletSettings
       await navigator.share({ title: `Struk ${order.number}`, text, url })
       return 'shared'
     } catch {
-      // Batal share atau ditutup user
+      // Dibatalkan pengguna
     }
   }
   await navigator.clipboard.writeText(`${text}\n${url}`)

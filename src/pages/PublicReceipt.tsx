@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react'
 import QRCode from 'qrcode'
-import { decodeOnlineReceipt, fetchRemoteReceipt, type PublicReceiptData } from '../lib/digitalReceipt'
-import { dateTimeId, rupiahCompact } from '../lib/format'
-import { itemLineTotal, itemUnitPrice } from '../lib/order'
+import { decodeOnlineReceipt, fetchRemoteReceipt, type PublicReceiptData } from '../lib/digitalReceipt.ts'
+import { dateTimeId, rupiahCompact } from '../lib/format.ts'
+import { itemLineTotal, itemUnitPrice } from '../lib/order.ts'
+
+type ReceiptTrust = 'verified' | 'offline-unverified'
 
 export function PublicReceiptPage() {
   const [data, setData] = useState<PublicReceiptData | null>(null)
+  const [trust, setTrust] = useState<ReceiptTrust>('verified')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [qr, setQr] = useState('')
@@ -27,21 +30,24 @@ export function PublicReceiptPage() {
         return
       }
 
-      // 1. Periksa apakah hash merupakan format token (misal: 48 karakter hex)
+      // 1. Periksa apakah hash merupakan token 192-bit acak (48 karakter hex)
       const tokenCandidate = hash.includes('-') ? hash.split('-')[0] : hash
       if (/^[0-9a-f]{32,64}$/i.test(tokenCandidate)) {
         const remote = await fetchRemoteReceipt(tokenCandidate)
         if (remote) {
           setData(remote)
+          setTrust('verified')
           setLoading(false)
           return
         }
       }
 
-      // 2. Fallback offline atau format legacy yang menyertakan data payload
+      // 2. Fallback offline legacy: jika data berupa payload Base64 mentah
+      // PENTING: Jangan beri tanda 'resmi/terverifikasi' untuk data mentah URL
       const fallback = decodeOnlineReceipt(hash)
       if (fallback) {
         setData(fallback)
+        setTrust('offline-unverified')
         setLoading(false)
         return
       }
@@ -58,7 +64,7 @@ export function PublicReceiptPage() {
       <main className="online-receipt-page">
         <section className="online-receipt-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>
           <div className="online-brand-mark" style={{ animation: 'spin 1.5s linear infinite' }}>♨</div>
-          <p style={{ marginTop: '1rem', color: '#666' }}>Memverifikasi keaslian nota digital...</p>
+          <p style={{ marginTop: '1rem', color: '#666' }}>Memverifikasi keaslian nota digital pada server...</p>
         </section>
       </main>
     )
@@ -67,8 +73,8 @@ export function PublicReceiptPage() {
   if (error || !data) {
     return (
       <main className="online-receipt-error">
-        <strong>Nota Tidak Valid atau Tidak Ditemukan</strong>
-        <p>Tautan nota ini mungkin tidak lengkap, kedaluwarsa, atau dokumen tidak terdaftar pada sistem kasir.</p>
+        <strong>Nota Tidak Valid atau Belum Terverifikasi</strong>
+        <p>Tautan nota ini tidak terdaftar pada server kasir, sudah kedaluwarsa, atau terjadi modifikasi URL.</p>
       </main>
     )
   }
@@ -85,16 +91,24 @@ export function PublicReceiptPage() {
       <section className="online-receipt-card">
         <header>
           <div className="online-brand-mark">♨</div>
-          <span>NOTA DIGITAL RESMI</span>
+          <span>{trust === 'verified' ? 'NOTA DIGITAL RESMI' : 'NOTA LOKAL (OFFLINE)'}</span>
           <h1>{data.brand}</h1>
           <p>{data.outlet}</p>
         </header>
 
-        <div className="online-receipt-status">
+        <div className={`online-receipt-status ${trust === 'verified' ? 'verified' : 'unverified'}`}>
           <small>Nomor antrean</small>
           <strong>{o.queueNumber}</strong>
-          <span>Pesanan terverifikasi ✓</span>
+          <span>
+            {trust === 'verified' ? 'Pesanan terverifikasi cloud ✓' : '⚠️ Belum diverifikasi server cloud'}
+          </span>
         </div>
+
+        {trust === 'offline-unverified' && (
+          <div style={{ margin: '0.75rem 0', padding: '0.6rem 0.8rem', background: '#fff3cd', color: '#856404', borderRadius: '6px', fontSize: '12px', lineHeight: 1.4 }}>
+            <strong>Peringatan Keabsahan:</strong> Nota ini dihasilkan secara lokal dan belum tervalidasi oleh server pusat. Tidak dapat digunakan sebagai bukti audit pembayaran resmi sampai disinkronkan oleh pihak kasir.
+          </div>
+        )}
 
         <dl>
           <div><dt>No. transaksi</dt><dd>{o.number}</dd></div>
@@ -136,7 +150,11 @@ export function PublicReceiptPage() {
           {qr && <img src={qr} alt="QR nota ini" />}
           <strong>{data.tagline}</strong>
           <p>{data.address}<br />{data.phone}</p>
-          <small>Simpan tautan ini sebagai bukti transaksi resmi.</small>
+          <small>
+            {trust === 'verified'
+              ? 'Tercatat resmi dalam sistem Cloud POS.'
+              : 'Salinan lokal sementara.'}
+          </small>
         </footer>
       </section>
     </main>

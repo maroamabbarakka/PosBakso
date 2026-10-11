@@ -79,10 +79,12 @@ class PrinterSpooler {
 
   run<T>(printerId: string, action: () => Promise<T>): Promise<T> {
     const previous = this.chains.get(printerId) ?? Promise.resolve()
-    const next = previous.then(action, action)
-    this.chains.set(printerId, next.catch(() => undefined))
-    return next.finally(() => {
-      if (this.chains.get(printerId) === next) {
+    const currentAction = previous.then(action, action)
+    const trackedPromise = currentAction.catch(() => undefined)
+    this.chains.set(printerId, trackedPromise)
+
+    return currentAction.finally(() => {
+      if (this.chains.get(printerId) === trackedPromise) {
         this.chains.delete(printerId)
       }
     })
@@ -118,9 +120,18 @@ async function enqueueAndPrint(kind:PrintJob['kind'],order:Order,printer:Printer
   const id=idempotent?`print-${order.id}-${kind}-${printer.id}`:uid('print')
   if(idempotent){
     const existing=(await readPrintJobs()).find(x=>x.id===id)
-    if(existing&&existing.status==='printed')return {ok:true,job:existing,duplicate:true,reason:undefined}
+    if(existing){
+      if(existing.status==='printed')return {ok:true,job:existing,duplicate:true,reason:undefined}
+      if(existing.status==='printing')return {ok:true,job:existing,duplicate:true,reason:'in-flight'}
+    }
   }
   const now=new Date().toISOString();const job:PrintJob={id,printerId:printer.id,printerName:printer.name,kind,orderId:order.id,orderNumber:order.number,status:'pending',attempts:0,createdAt:now,updatedAt:now,payload};await savePrintJob(job);return executeJob(job,printer)
+}
+
+export async function markPrintJobPrinted(job:PrintJob):Promise<PrintJob>{
+  const updated:PrintJob={...job,status:'printed',updatedAt:new Date().toISOString(),lastError:undefined}
+  await updatePrintJob(updated)
+  return updated
 }
 
 export async function autoPrintReceipt(order:Order,settings:OutletSettings,printer?:PrinterConfig){
