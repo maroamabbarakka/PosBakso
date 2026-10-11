@@ -1,0 +1,24 @@
+import type { CartItem, OrderType } from '../types'
+import { rupiahCompact } from '../lib/format'
+import { itemLineTotal, itemUnitPrice } from '../lib/order'
+import { Icon } from './Icon'
+
+export function CartPanel({ items, onQty, onClear, onPay, onHold, compact=false, orderType, onOrderType, tableName, onTableName, customerName, onCustomerName, tables=[], occupiedTables=[], note, onNote, discount, onDiscount, tax, service }:{
+  items:CartItem[];onQty:(id:string,delta:number)=>void;onClear:()=>void;onPay:()=>void;onHold:()=>void;compact?:boolean;
+  orderType:OrderType;onOrderType:(v:OrderType)=>void;tableName:string;onTableName:(v:string)=>void;customerName:string;onCustomerName:(v:string)=>void;
+  tables?:string[];occupiedTables?:string[];note:string;onNote:(v:string)=>void;discount:number;onDiscount:(v:number)=>void;tax:number;service:number
+}) {
+  const subtotal = items.reduce((sum,i)=>sum+itemLineTotal(i),0);const total = Math.max(0, subtotal-discount+tax+service)
+  return <section className={`cart-panel ${compact?'compact':''}`}>
+    <div className="cart-title"><div><h2>Pesanan <span>({items.reduce((n,i)=>n+i.qty,0)})</span></h2><small>Transaksi aktif</small></div><button className="text-danger" onClick={onClear}><Icon name="trash" size={16}/> Hapus Semua</button></div>
+    <div className="order-type-row"><button className={orderType==='dine_in'?'active':''} onClick={()=>onOrderType('dine_in')}><Icon name="table"/>Dine In</button><button className={orderType==='takeaway'?'active':''} onClick={()=>onOrderType('takeaway')}><Icon name="box"/>Bungkus</button><button className={orderType==='delivery'?'active':''} onClick={()=>onOrderType('delivery')}><Icon name="orders"/>Delivery</button></div>
+    {orderType==='dine_in'?<div className="table-select-wrap"><div className="field-caption"><span>Pilih Meja</span><small>Merah = terpakai</small></div><div className="table-chips">{tables.map(t=>{const occupied=occupiedTables.includes(t)&&tableName!==t;return <button key={t} disabled={occupied} className={`${tableName===t?'active':''} ${occupied?'occupied':''}`} onClick={()=>onTableName(t)}>{t}</button>})}</div>{!tables.length&&<label className="inline-field"><span>Meja</span><input value={tableName} onChange={e=>onTableName(e.target.value)} placeholder="A04"/></label>}</div>:<label className="inline-field"><span>Nama Pelanggan</span><input value={customerName} onChange={e=>onCustomerName(e.target.value)} placeholder={orderType==='delivery'?'Nama penerima / alamat singkat':'Nama pelanggan (opsional)'}/></label>}
+    <div className="cart-items">
+      {!items.length && <div className="empty-cart"><Icon name="receipt" size={34}/><strong>Belum ada pesanan</strong><span>Pilih menu untuk mulai transaksi.</span></div>}
+      {items.map((item,index)=><div className="cart-item" key={item.lineId??`${item.id}-${index}`}><img src={item.image} alt=""/><div className="cart-item-main"><strong>{item.name}</strong><small>{rupiahCompact(itemUnitPrice(item))}</small>{item.modifiers?.map(m=><small className="item-modifier" key={m.name}>+ {m.name}{m.price?` (${rupiahCompact(m.price)})`:''}</small>)}{item.note&&<small className="item-note">{item.note}</small>}<div className="qty-control"><button onClick={()=>onQty(item.lineId??item.id,-1)}><Icon name="minus" size={15}/></button><b>{item.qty}</b><button onClick={()=>onQty(item.lineId??item.id,1)}><Icon name="plus" size={15}/></button></div></div><strong className="line-total">{rupiahCompact(itemLineTotal(item))}</strong></div>)}
+    </div>
+    <label className="note-field"><span>Catatan Pesanan</span><input value={note} onChange={e=>onNote(e.target.value)} placeholder="Contoh: tanpa sambal, pisah kuah, dll"/></label>
+    <div className="cart-summary"><div><span>Subtotal</span><strong>{rupiahCompact(subtotal)}</strong></div><label className="summary-input"><span>Diskon</span><input type="number" min="0" max={subtotal} value={discount||''} onChange={e=>onDiscount(Math.max(0,Number(e.target.value)||0))} placeholder="0"/></label>{tax>0&&<div><span>Pajak</span><strong>{rupiahCompact(tax)}</strong></div>}{service>0&&<div><span>Service</span><strong>{rupiahCompact(service)}</strong></div>}<div className="grand-total"><span>Total</span><strong>{rupiahCompact(total)}</strong></div></div>
+    <div className="cart-actions"><button className="secondary" disabled={!items.length} onClick={onHold}><Icon name="save"/>Simpan Pesanan</button><button className="primary" disabled={!items.length} onClick={onPay}><Icon name="card"/>Bayar Sekarang</button></div>
+  </section>
+}

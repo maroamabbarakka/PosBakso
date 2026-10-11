@@ -1,0 +1,26 @@
+name: Quality Gate
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install exact dependencies
+        run: npm install --no-audit --no-fund
+      - name: Static POS QA
+        run: npm run qa
+      - name: Domain math smoke tests
+        run: npm run test:domain
+      - name: TypeScript
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build

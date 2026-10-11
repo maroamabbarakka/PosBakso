@@ -1,0 +1,159 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function profile() { return get(userPath()); }
+    function activeUser() { return signedIn() && exists(userPath()) && profile().data.active == true; }
+    function roleKey() { return profile().data.role; }
+    function rolePath() { return /databases/$(database)/documents/roles/$(roleKey()); }
+    function roleExists() { return activeUser() && exists(rolePath()); }
+    function permissions() { return get(rolePath()).data.permissions; }
+    function hasPermission(permission) { return roleExists() && permissions().hasAny([permission]); }
+    function hasAnyPermission(required) { return roleExists() && permissions().hasAny(required); }
+    function isOwner() { return activeUser() && roleKey() == 'owner'; }
+    function isManager() { return activeUser() && roleKey() == 'manager'; }
+    function canRestore() { return isOwner() && hasPermission('backup.restore'); }
+    function isNum(v) { return v is int || v is float; }
+    function validMoney(v) { return isNum(v) && v >= 0; }
+    function immutableOrderIdentity() {
+      return request.resource.data.number == resource.data.number &&
+        request.resource.data.queueNumber == resource.data.queueNumber &&
+        request.resource.data.cashierId == resource.data.cashierId &&
+        request.resource.data.createdAt == resource.data.createdAt;
+    }
+    function validOrderShape() {
+      return request.resource.data.keys().hasAll(['number','queueNumber','createdAt','updatedAt','cashierId','cashierName','type','status','items','subtotal','discount','tax','service','total']) &&
+        request.resource.data.number is string && request.resource.data.queueNumber is string &&
+        request.resource.data.cashierId is string && request.resource.data.cashierName is string &&
+        request.resource.data.type in ['dine_in','takeaway','delivery'] &&
+        request.resource.data.status in ['held','paid','void','refunded'] &&
+        request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 100 &&
+        request.resource.data.createdAt is string && request.resource.data.updatedAt is string &&
+        validMoney(request.resource.data.subtotal) && validMoney(request.resource.data.discount) &&
+        validMoney(request.resource.data.tax) && validMoney(request.resource.data.service) && validMoney(request.resource.data.total) &&
+        request.resource.data.discount <= request.resource.data.subtotal &&
+        request.resource.data.total == request.resource.data.subtotal - request.resource.data.discount + request.resource.data.tax + request.resource.data.service;
+    }
+
+    match /settings/{docId} {
+      allow read: if activeUser();
+      allow write: if (hasPermission('settings.manage') || canRestore()) && request.resource.data.brandName is string && request.resource.data.outletName is string;
+    }
+    match /printers/{docId} {
+      allow read: if activeUser();
+      allow write: if (hasPermission('printer.manage') || canRestore()) &&
+        request.resource.data.paperWidth in [58,80] &&
+        request.resource.data.transport in ['browser','bluetooth'] &&
+        request.resource.data.type in ['cashier','kitchen','bar'] &&
+        isNum(request.resource.data.printWidthDots) && request.resource.data.printWidthDots >= 200 && request.resource.data.printWidthDots <= 640 &&
+        request.resource.data.autoPrint is bool && request.resource.data.printLogo is bool && request.resource.data.cutPaper is bool && request.resource.data.openDrawer is bool;
+    }
+    match /roles/{docId} {
+      allow read: if activeUser();
+      // Bootstrap-safe: first active owner profile can create role docs before role permissions exist.
+      // backup.restore is intentionally Owner-only.
+      allow write: if isOwner() && (docId == 'owner' || !request.resource.data.permissions.hasAny(['backup.restore']));
+    }
+    match /users/{uid} {
+      allow read: if activeUser() && (request.auth.uid == uid || hasPermission('user.manage'));
+      allow create: if (hasPermission('user.manage') || canRestore()) && request.resource.data.active is bool && (isOwner() || request.resource.data.role != 'owner');
+      allow update: if (hasPermission('user.manage') || canRestore()) && request.resource.data.active is bool && (
+        isOwner() || (resource.data.role != 'owner' && request.resource.data.role != 'owner')
+      );
+      allow delete: if hasPermission('user.manage') && (isOwner() || resource.data.role != 'owner');
+    }
+    match /categories/{docId} {
+      allow read: if activeUser();
+      allow write: if hasPermission('product.manage');
+    }
+    match /products/{docId} {
+      allow read: if activeUser();
+      allow write: if (hasPermission('product.manage') || canRestore()) && validMoney(request.resource.data.price) && request.resource.data.active is bool;
+    }
+    match /recipes/{docId} {
+      allow read: if activeUser();
+      allow write: if (hasPermission('product.manage') || hasPermission('inventory.adjust') || canRestore()) && request.resource.data.items is list && request.resource.data.items.size() <= 50;
+    }
+    match /ingredients/{docId} {
+      allow read: if activeUser();
+      allow create, delete: if hasPermission('inventory.adjust') || canRestore();
+      allow update: if
+        (hasPermission('inventory.adjust') || hasPermission('inventory.purchase') || canRestore()) ||
+        (hasPermission('sale.create') &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock','updatedAt']) &&
+          isNum(request.resource.data.stock));
+    }
+    match /suppliers/{docId} {
+      allow read: if hasAnyPermission(['inventory.view','inventory.purchase']);
+      allow write: if hasPermission('inventory.purchase') || canRestore();
+    }
+    match /purchases/{docId} {
+      allow read: if hasAnyPermission(['inventory.view','inventory.purchase']);
+      allow create, update: if (hasPermission('inventory.purchase') || canRestore()) && validMoney(request.resource.data.total);
+      allow delete: if false;
+    }
+    match /orders/{orderId} {
+      allow read: if hasAnyPermission(['sale.create','sale.reprint','sale.void','sale.refund','kitchen.view','report.view']);
+      allow create: if (hasPermission('sale.create') || canRestore()) && validOrderShape() && (request.resource.data.cashierId == request.auth.uid || canRestore()) && (request.resource.data.status in ['held','paid'] || canRestore()) &&
+        (request.resource.data.discount == 0 || hasPermission('sale.discount') || canRestore());
+      allow update: if validOrderShape() && immutableOrderIdentity() && (
+        (
+          hasPermission('sale.create') && resource.data.cashierId == request.auth.uid && resource.data.status == 'held' && request.resource.data.status in ['held','paid'] &&
+          (request.resource.data.discount == resource.data.discount || hasPermission('sale.discount'))
+        ) ||
+        (
+          hasPermission('kitchen.view') &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stationStatus','kitchenStatus','updatedAt'])
+        ) ||
+        (
+          hasPermission('sale.void') && request.resource.data.status == 'void' && resource.data.status != 'void' && resource.data.status != 'refunded' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','voidReason','voidedAt','voidDate','reversalShiftId','updatedAt'])
+        ) ||
+        (
+          hasPermission('sale.refund') && request.resource.data.status == 'refunded' && resource.data.status == 'paid' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','refundReason','refundedAt','refundDate','reversalShiftId','updatedAt'])
+        ) || canRestore()
+      );
+      allow delete: if false;
+    }
+    match /shifts/{shiftId} {
+      allow read: if hasAnyPermission(['shift.open','shift.close','report.view']);
+      allow create: if (hasPermission('shift.open') || canRestore()) && (request.resource.data.cashierId == request.auth.uid || canRestore()) && validMoney(request.resource.data.openingCash) && (request.resource.data.status == 'open' || canRestore());
+      allow update: if canRestore() || (
+        hasPermission('shift.close') && resource.data.status == 'open' && request.resource.data.status == 'closed' &&
+        request.resource.data.cashierId == resource.data.cashierId && request.resource.data.cashierName == resource.data.cashierName &&
+        request.resource.data.openedAt == resource.data.openedAt && request.resource.data.openingCash == resource.data.openingCash &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','closedAt','actualClosingCash','note']) &&
+        validMoney(request.resource.data.actualClosingCash) && request.resource.data.closedAt is string
+      );
+      allow delete: if false;
+    }
+    match /cash_movements/{docId} {
+      allow read: if hasAnyPermission(['cash.move','report.view']);
+      allow create: if (hasPermission('cash.move') || canRestore()) && (request.resource.data.userId == request.auth.uid || canRestore()) && request.resource.data.type in ['in','out'] && isNum(request.resource.data.amount) && request.resource.data.amount > 0;
+      allow update, delete: if false;
+    }
+    match /stock_movements/{docId} {
+      allow read: if hasAnyPermission(['inventory.view','report.view']);
+      allow create: if (hasAnyPermission(['sale.create','inventory.adjust','inventory.purchase']) || canRestore()) && (request.resource.data.userId == request.auth.uid || canRestore()) &&
+        request.resource.data.type in ['sale','purchase','adjustment','waste','opname','return'] && isNum(request.resource.data.qty) && request.resource.data.qty != 0;
+      allow update, delete: if false;
+    }
+    match /daily_summaries/{docId} {
+      allow read: if hasPermission('report.view');
+      allow write: if false;
+    }
+    match /audit_logs/{docId} {
+      allow read: if hasPermission('audit.view');
+      allow create: if activeUser() && (request.resource.data.userId == request.auth.uid || canRestore()) && request.resource.data.action is string && request.resource.data.entity is string && request.resource.data.severity in ['info','warning','critical'];
+      allow update, delete: if false;
+    }
+    match /sync_events/{docId} {
+      allow read: if activeUser();
+      allow create: if activeUser() && request.resource.data.userId == request.auth.uid && isNum(request.resource.data.mutationCount) && request.resource.data.mutationCount > 0;
+      allow update, delete: if false;
+    }
+    match /{document=**} { allow read, write: if false; }
+  }
+}

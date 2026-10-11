@@ -1,0 +1,3 @@
+import type { Product } from '../types'
+import { rupiahCompact } from '../lib/format'
+export function ProductCard({product,onAdd}:{product:Product;onAdd:()=>void}){const soldOut=product.stock!==undefined&&product.stock<=0;return <button className={`product-card ${soldOut?'sold-out':''}`} onClick={onAdd} disabled={!product.active||soldOut}><div className="product-image"><img src={product.image} alt="" loading="lazy"/>{soldOut?<span className="stock-chip sold">HABIS</span>:product.stock!==undefined&&product.stock<=10?<span className="stock-chip">Sisa {product.stock}</span>:null}</div><div className="product-body"><strong>{product.name}</strong><small>{product.sku}</small><span>{rupiahCompact(product.price)}</span></div></button>}

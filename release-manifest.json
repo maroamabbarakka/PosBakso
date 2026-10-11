@@ -1,0 +1,464 @@
+{
+  "release": "PosBakso V2 RC2",
+  "schemaVersion": 4,
+  "date": "2026-10-11",
+  "firebasePlan": "Spark",
+  "files": [
+    {
+      "path": ".env.example",
+      "sha256": "456ad266cd669cdcda67da9c5aeb47843886a1ba55c596618e4fd6fc7c1dd3f5",
+      "size": 194
+    },
+    {
+      "path": ".github/workflows/quality.yml",
+      "sha256": "82d7bab2e1705d3a4224206b4b9830cea8a1c31c5495451fcbabbb278abece2d",
+      "size": 604
+    },
+    {
+      "path": ".gitignore",
+      "sha256": "4e953ba8a3fa15da5466544123a9d0c36e10980bb82acd030504cac876355c57",
+      "size": 73
+    },
+    {
+      "path": "README.md",
+      "sha256": "0043207b89dfb00d4528a744288225f7a53151bc825c0406bb8347bcd6ca26f1",
+      "size": 7406
+    },
+    {
+      "path": "capacitor.config.json",
+      "sha256": "aa84d4a549f9e1d0667219f989241d27bbe032251b391e78b4a077630d2742e9",
+      "size": 180
+    },
+    {
+      "path": "docs/ANDROID-BLUETOOTH.md",
+      "sha256": "140b8be7f78636dfa65a4013bb87dc37e2affa0b8f2251851313f5dad4355328",
+      "size": 4285
+    },
+    {
+      "path": "docs/AUDIT-REMEDIATION.md",
+      "sha256": "458fa3e6ac4ed0a205d8989632f262bbb8cdb8990cbc697b42eebcecfbce452c",
+      "size": 9067
+    },
+    {
+      "path": "docs/BUILD-REPORT.md",
+      "sha256": "93edd680d7e3b7028dbae6f7100f12fead81a412da0e6836f36e3be35965f3d0",
+      "size": 1960
+    },
+    {
+      "path": "docs/FILE-MANIFEST.txt",
+      "sha256": "83c70c8db0e4a566f20faf2f3faa84fd98bedd9c2c05002e77f87d6611820ea6",
+      "size": 2331
+    },
+    {
+      "path": "docs/FIREBASE-SPARK-SETUP.md",
+      "sha256": "396bd8d674c4fe61f8052e2c20299cea16c11fd750dd4be1d52697e8f558c3b9",
+      "size": 5104
+    },
+    {
+      "path": "docs/PRINTING-PRODUCTION.md",
+      "sha256": "ba4764d1549510b6ea107086956daaf8af91ccaa72c67be0d457f8e467831698",
+      "size": 8292
+    },
+    {
+      "path": "docs/PRODUCTION-CHECKLIST.md",
+      "sha256": "97cecbff34e370e4236c82e757297ce700a6f987077bb77c4405fd593ddf5893",
+      "size": 5920
+    },
+    {
+      "path": "docs/RELEASE-NOTES-RC2.md",
+      "sha256": "fe4564829b04c2d8419937f03c6df5f37355c6e84b9af4c13b7662ef82434fe9",
+      "size": 1382
+    },
+    {
+      "path": "docs/VALIDATION.md",
+      "sha256": "7fff431ce02c746bfbe2fb37feb8936268ea61c2ed49450044c79b26003cd4d5",
+      "size": 3470
+    },
+    {
+      "path": "docs/mockup-reference.png",
+      "sha256": "76e6c32af9f78f308b85108ca1678a257922f5dc0d3f37e4701d79d3c34b6625",
+      "size": 1868701
+    },
+    {
+      "path": "firebase.json",
+      "sha256": "913db09b79c1b1722b434e20cf14838260f7892133e233a894be1d0856bdfdce",
+      "size": 366
+    },
+    {
+      "path": "firestore.indexes.json",
+      "sha256": "23ccdcdc26d21e09889eba2e0e2929a556c29072f905968baf0e424fd57920a0",
+      "size": 1080
+    },
+    {
+      "path": "firestore.rules",
+      "sha256": "0072ec9148d10843ec9789032f147d1de553fd53a8cb2893bee3816c91cc3164",
+      "size": 10860
+    },
+    {
+      "path": "index.html",
+      "sha256": "22a8c5727d418d6fb8255367b7868378bcb87e38ea71b4c314627975745abdf0",
+      "size": 561
+    },
+    {
+      "path": "native/android/AndroidManifest.permissions.xml",
+      "sha256": "37287db1ce1ca8c5ae25481781a9fa8045daa39a3b2c271797653107a607d12a",
+      "size": 451
+    },
+    {
+      "path": "native/android/com/maroamabbarakka/posbakso/EscPosPrinterPlugin.kt",
+      "sha256": "10141d1acf141e0321b93f6cb947293c36d498b6a16835bdc219a966bfc8c757",
+      "size": 18662
+    },
+    {
+      "path": "native/android/com/maroamabbarakka/posbakso/MainActivity.kt",
+      "sha256": "2d319223ef806e4d68b48f9eb4fdb1655a53d70f80c1bc10b77cd772e9fb8f27",
+      "size": 307
+    },
+    {
+      "path": "package.json",
+      "sha256": "0614c57ad1d40c44310b2087a68134c002ef2df5204ef4f04175ddfdff928a8b",
+      "size": 903
+    },
+    {
+      "path": "public/icon-192.png",
+      "sha256": "2da97b58ac0cb9bdcf641605fab48e14877b90e25741d0fc28c2c0e1567043e3",
+      "size": 6631
+    },
+    {
+      "path": "public/icon-512.png",
+      "sha256": "c7f3b43a97179abb0b376ad5e82dc337125c7d2c42765aea9f8764c184ad7f38",
+      "size": 17016
+    },
+    {
+      "path": "public/icon-maskable-512.png",
+      "sha256": "670ccfea186fdef6852ada8d0c97c05d1702ad205f9bbb02a4c9fc22ca26dd89",
+      "size": 10255
+    },
+    {
+      "path": "public/icon.svg",
+      "sha256": "84157fc9e171991adf4aa9ec98cc12b6b4025afaee708715337dbd57b7759fbe",
+      "size": 488
+    },
+    {
+      "path": "public/manifest.webmanifest",
+      "sha256": "9e31880e879efe64b8c28ecc7f00b1075b65c1830daa41a33aa8685bc9d94d2d",
+      "size": 690
+    },
+    {
+      "path": "public/products/bakso-telur.svg",
+      "sha256": "50f6c318458617fb9897306b22a1358474c04fa2fb656fe6b1969f7f73688741",
+      "size": 1124
+    },
+    {
+      "path": "public/products/bakso-umum.svg",
+      "sha256": "0b01078d50f44fdac963c9405c2d38c9e914a3f33427e36d4085105e3d5e3f61",
+      "size": 1124
+    },
+    {
+      "path": "public/products/bakso-urat.svg",
+      "sha256": "68faca13c64a52e1b836e10633aed661b8e1742ca3be26aebc0c9e3384eba567",
+      "size": 1124
+    },
+    {
+      "path": "public/products/es-jeruk.svg",
+      "sha256": "a919b66b64fb03c3940b6785568cab01a938ea254fd906d5b1522a33da485b83",
+      "size": 565
+    },
+    {
+      "path": "public/products/es-teh.svg",
+      "sha256": "0f0ed918dfb8f3f4a0f60a89631bc42916ed0209c798f389d58f065ee7618364",
+      "size": 869
+    },
+    {
+      "path": "public/products/kerupuk.svg",
+      "sha256": "8ac243f2fc6ab00662fb7aa489eb7082b177f83a69c0d1021e016c82425a99e4",
+      "size": 510
+    },
+    {
+      "path": "public/products/mie-bakso.svg",
+      "sha256": "73cb16ca2b51ea8fdfe57309708cf41d18399040ca27bc8d7138954c03980bbf",
+      "size": 1124
+    },
+    {
+      "path": "public/products/paket.svg",
+      "sha256": "2e7ff8a4bcc06ec5efcddb42d0a72c8a5e3b15f40fdd120c834d7b2f7dfac92c",
+      "size": 1124
+    },
+    {
+      "path": "public/sw.js",
+      "sha256": "1bb4b26448b23bd830fda85281400ed37bd1eef4130726e59e4c8ad566d1aae3",
+      "size": 1029
+    },
+    {
+      "path": "scripts/generate-sw.mjs",
+      "sha256": "7da583cf64c3d77b68917db006c8990745413e641dffb9bcd7754143eafda57b",
+      "size": 1984
+    },
+    {
+      "path": "scripts/qa.mjs",
+      "sha256": "dddad8b548fa81003a0f7e736281041589b2915138c2bda0d8ced432d414efea",
+      "size": 5523
+    },
+    {
+      "path": "src/App.tsx",
+      "sha256": "e73b3aac7e019c7caa18c71c55fd3959f6ff5d7c96e74ec469c35b5929ac12e6",
+      "size": 5618
+    },
+    {
+      "path": "src/components/CartPanel.tsx",
+      "sha256": "7e2658726530039c8216e7ff2ac0aa09c3fecbb71d7a2cc996f65bbae28f2cd4",
+      "size": 4560
+    },
+    {
+      "path": "src/components/ErrorBoundary.tsx",
+      "sha256": "a0fe80a7acaeb324c2074ecb67a1fe6c02adacd477a4849547f981edb0d756dd",
+      "size": 1001
+    },
+    {
+      "path": "src/components/Icon.tsx",
+      "sha256": "d04156aa0a965f0e09dab02559482e5d27c6d2fd62189c60afcded16cccc2d94",
+      "size": 4122
+    },
+    {
+      "path": "src/components/KitchenTicket.tsx",
+      "sha256": "ea6c42c79fe72bbc772f73c706a666d7b7082386cdff3e83658753ec951a3309",
+      "size": 1862
+    },
+    {
+      "path": "src/components/Modal.tsx",
+      "sha256": "06b7dfdd3b90b6f79f19dacc44272daac5538a027ecfb1b513ae157c2e39adfa",
+      "size": 2386
+    },
+    {
+      "path": "src/components/PaymentModal.tsx",
+      "sha256": "7fbf4d15e591236a3acf18058972387ec97e37201265c117bc6f466080e473dd",
+      "size": 5537
+    },
+    {
+      "path": "src/components/ProductCard.tsx",
+      "sha256": "d47086bd7bc3562e87bc9320d892a6169af21bd34437aa9a1f7c9ebbb6544a79",
+      "size": 738
+    },
+    {
+      "path": "src/components/Receipt.tsx",
+      "sha256": "c2c7ad897f199b6e210923716bfbd7889a6aaf25f8f3b22d280f079f8fdc4d6f",
+      "size": 7531
+    },
+    {
+      "path": "src/components/Sidebar.tsx",
+      "sha256": "41f0860057a14dc059f7944d0a88405d45987e9e75cd704e9cf15a2fa906806c",
+      "size": 2604
+    },
+    {
+      "path": "src/components/Topbar.tsx",
+      "sha256": "fce04242d24f044cbf1a51becdbeda770713a5054868b240c23674340a981f0e",
+      "size": 2117
+    },
+    {
+      "path": "src/context/PosStore.tsx",
+      "sha256": "5bb3bdd2c13a2c9cea4a24edc99587f7da5ae047461344f6f20a883f5508aa4c",
+      "size": 44592
+    },
+    {
+      "path": "src/data/defaults.ts",
+      "sha256": "055c7f91ca6013597ba9df0be7789ff4f12d130680cccc0702b5ac0dffe416e0",
+      "size": 4401
+    },
+    {
+      "path": "src/data/mock.ts",
+      "sha256": "044a6916f3f90ff6226f0f7bc61e7b2f06b2e4a0c57bc867ae931a63ba3f10db",
+      "size": 194
+    },
+    {
+      "path": "src/data/seed.ts",
+      "sha256": "7e710f286e7e64f8618f892ef8fe9ad587c29c0d832cf7970259710c955009af",
+      "size": 11424
+    },
+    {
+      "path": "src/lib/domainMath.ts",
+      "sha256": "973c04e89391369b8a9394298cbf1ba7ea26b3cbb8dc2e2b7baaa6207f3d9548",
+      "size": 1321
+    },
+    {
+      "path": "src/lib/export.ts",
+      "sha256": "56592bf7bb8796f8fa0eaf42a217143935d5faa9f443437f1af27835bc611654",
+      "size": 1313
+    },
+    {
+      "path": "src/lib/firebase.ts",
+      "sha256": "333b8375135293087bb9bc861870106dc404b26c8174ed93de4dc2a5e6e177f6",
+      "size": 1143
+    },
+    {
+      "path": "src/lib/format.ts",
+      "sha256": "0095e443ed145ff62a61750b85af388c81d13c70e43dc61564a8a5ecc330ca95",
+      "size": 1396
+    },
+    {
+      "path": "src/lib/localDb.ts",
+      "sha256": "d07ecbaa6578b9d7c3456002c68282280f8199c29689fd10af5eac18ec10ee51",
+      "size": 6020
+    },
+    {
+      "path": "src/lib/migrate.ts",
+      "sha256": "bb2d5db24df9fb22126225f37a2d2d66dfe93eade92ecab35cdd924e06c5cbc2",
+      "size": 3574
+    },
+    {
+      "path": "src/lib/order.ts",
+      "sha256": "b1dc5b439ccaefda347bf41bf7890e9a3faadd597282e9e292ef7f36251116d3",
+      "size": 857
+    },
+    {
+      "path": "src/lib/receiptRaster.ts",
+      "sha256": "9c4a57db60ae481cc873e66e5a8ce435f80246e8a380dfccc882e4ab9056dfe7",
+      "size": 4462
+    },
+    {
+      "path": "src/lib/receiptTemplate.ts",
+      "sha256": "db6d602a58fa08392b71fde57748d68efdf5d67ae05944599a1f0c196a92cfbf",
+      "size": 1299
+    },
+    {
+      "path": "src/lib/terminal.ts",
+      "sha256": "e8703e0f63f5439ae70ac68f8d465aa6455d78cd7d78a39481f1df48bdaf6d23",
+      "size": 1389
+    },
+    {
+      "path": "src/main.tsx",
+      "sha256": "c224601af1b309306e63d539aabf4667c388e225af05a7a68a9f85a15b75b5d6",
+      "size": 529
+    },
+    {
+      "path": "src/pages/Cashier.tsx",
+      "sha256": "2ac771015ef086a93d810b0b284df1b8a1141a78702c37fb975f7f57fdf6c40d",
+      "size": 12922
+    },
+    {
+      "path": "src/pages/Dashboard.tsx",
+      "sha256": "30f8f451cfd43a23e298635087d212a82d35bc186c7950277bd4b0e12ced3324",
+      "size": 7640
+    },
+    {
+      "path": "src/pages/Inventory.tsx",
+      "sha256": "74533d4bb0071a3cdcc385983bdb628cce0528a48500d01f6e00f4486b68a0dd",
+      "size": 17829
+    },
+    {
+      "path": "src/pages/Kitchen.tsx",
+      "sha256": "3cddd8e5103f9f929f58a3ddddb9779467a91b29309e8481cc9f1025079cc280",
+      "size": 4183
+    },
+    {
+      "path": "src/pages/Login.tsx",
+      "sha256": "4da56b86d2b6ee23c968de9a9cb950c8839e88dafc2d68456e69c75135899de7",
+      "size": 5078
+    },
+    {
+      "path": "src/pages/Orders.tsx",
+      "sha256": "5e94f063ebd3f6562bafb7f2e656d2f5a92b42ba5819057229944a921690a412",
+      "size": 8767
+    },
+    {
+      "path": "src/pages/PrinterSettings.tsx",
+      "sha256": "edb897f5227ff44b309907906246fb8034120cd7b7d04d00ad581e24e5bc75f4",
+      "size": 9344
+    },
+    {
+      "path": "src/pages/Products.tsx",
+      "sha256": "bf7585cc51302d4b0f7bec255f6e7220d742b2354fbb4e527a1b6a0a2580532d",
+      "size": 9363
+    },
+    {
+      "path": "src/pages/Reports.tsx",
+      "sha256": "173baa8203e1b75801dfd810f08af032fc9edc045bb8c91ebb8baf64bd99ce71",
+      "size": 17765
+    },
+    {
+      "path": "src/pages/Settings.tsx",
+      "sha256": "d65ed76101fa395b245edd08fafe4308bd592de4d29cddc3ce1db74c025c6035",
+      "size": 16700
+    },
+    {
+      "path": "src/pages/Shifts.tsx",
+      "sha256": "db450e1b83829fceffea470d98af048fd43db94ec628ddd0a08be77697e7e5e1",
+      "size": 6131
+    },
+    {
+      "path": "src/pages/Users.tsx",
+      "sha256": "78deaea2e436068ea8be91b29fbbdf907eb611fbfff672ffba5e35235bcf1b62",
+      "size": 7865
+    },
+    {
+      "path": "src/services/firebaseSync.ts",
+      "sha256": "512d759e1d483ba5c3738cc14de2b5bdb7e97d05433f550e5b424885a9b84232",
+      "size": 7226
+    },
+    {
+      "path": "src/services/printer.ts",
+      "sha256": "b04a95354f9de31c670e0571c617c7851f629ecc287a4327504989c41b0c5bed",
+      "size": 10628
+    },
+    {
+      "path": "src/services/reportData.ts",
+      "sha256": "83e1bf255bb8bbbac4879bdc17c9c0b6c00ea4f928ca4f59affa5a0417b1ef22",
+      "size": 4863
+    },
+    {
+      "path": "src/styles.css",
+      "sha256": "27468940371ba8995cf9d9493d668d38565f18530b6f511c2b4a013ffc873447",
+      "size": 64369
+    },
+    {
+      "path": "src/types.ts",
+      "sha256": "7d0e04b979d4875a78848ec78fe75ee67a80c85aee80e31c3c8f9fbae41878bc",
+      "size": 7801
+    },
+    {
+      "path": "tests/domainMath.test.ts",
+      "sha256": "5a1403dce7ec6670f267b3ea72abe139674fa156920c74b73d77172932486621",
+      "size": 1051
+    },
+    {
+      "path": "tsconfig.app.json",
+      "sha256": "a7266d1c85fa6947c70073256d9a73e4c459e97b0b4ef24b5c48dcab498ef4c5",
+      "size": 507
+    },
+    {
+      "path": "tsconfig.app.tsbuildinfo",
+      "sha256": "307f7a9b038e009991aaa1310b7aa5c2516c4a1faac2c29591eb6e5c0b1478e1",
+      "size": 1078
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "770b4140bbb581e2dfd9ea9946ffc9c75a1d86ba7d2db5f77c83e37cbdf9d808",
+      "size": 119
+    },
+    {
+      "path": "tsconfig.node.json",
+      "sha256": "4d899360a26430461f39fa0b9297a566eab26e2fc53c28c6eb34d3c5f344d9c6",
+      "size": 211
+    },
+    {
+      "path": "tsconfig.node.tsbuildinfo",
+      "sha256": "5252bbaf20a9e6a0f6069085831428a2812b71ab68776ca60b1bbf026f7ca38c",
+      "size": 1930
+    },
+    {
+      "path": "vite.config.d.ts",
+      "sha256": "46a0b34e1264c4d25ca6646ff0e6cfaa7275ea1ae5a6bc23d4dfd84edf2f2b2e",
+      "size": 54
+    },
+    {
+      "path": "vite.config.js",
+      "sha256": "c65a98f10adee36cf40fa8ee12c74f3a6eb25e891d4149d349785d5c2c2c17f2",
+      "size": 194
+    },
+    {
+      "path": "vite.config.ts",
+      "sha256": "3830ef08379931def5e8c051646df665e220f3abc47f26acf5a6719b483523fc",
+      "size": 186
+    }
+  ],
+  "fileCount": 91
+}

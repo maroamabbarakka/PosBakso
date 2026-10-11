@@ -1,0 +1,1391 @@
+/* ===================================================
+   RHEZECK POS BAKSO - MODERN PREMIUM DESIGN SYSTEM
+   =================================================== */
+
+:root {
+  /* Palet Warna Utama - Hangat, Lezat & Profesional */
+  --primary: #dc2626;
+  --primary-hover: #b91c1c;
+  --primary-light: #fee2e2;
+  --primary-glow: rgba(220, 38, 38, 0.25);
+
+  --accent-amber: #f59e0b;
+  --accent-amber-light: #fef3c7;
+  
+  --success: #10b981;
+  --success-light: #d1fae5;
+  --warning: #f97316;
+  --danger: #ef4444;
+  --info: #3b82f6;
+
+  /* Warna Antarmuka (Light Mode Default) */
+  --bg-app: #f4f5f7;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #ffffff;
+  --bg-subtle: #f8fafc;
+  --border-color: #e2e8f0;
+  --border-subtle: #f1f5f9;
+
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  /* Tipografi & Dimensi */
+  --font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 9999px;
+
+  /* Bayangan Halus (Elevation) */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 14px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 12px 28px -4px rgba(15, 23, 42, 0.12), 0 4px 12px -2px rgba(15, 23, 42, 0.05);
+  --shadow-primary: 0 8px 20px -4px rgba(220, 38, 38, 0.35);
+
+  /* Transisi */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Mode Variables */
+html.dark {
+  --bg-app: #090d16;
+  --bg-surface: #131b2e;
+  --bg-surface-elevated: #1a243d;
+  --bg-subtle: #0f172a;
+  --border-color: #24304f;
+  --border-subtle: #1a243d;
+
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+
+  --primary-light: rgba(220, 38, 38, 0.15);
+  --accent-amber-light: rgba(245, 158, 11, 0.15);
+  --success-light: rgba(16, 185, 129, 0.15);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* Reset Dasar */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Layout App Kontainer */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ===================================================
+   TOP HEADER & NAVIGATION
+   =================================================== */
+.top-header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  z-index: 30;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.brand-logo-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+  box-shadow: var(--shadow-primary);
+  flex-shrink: 0;
+}
+
+.brand-text h1 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.brand-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  background: var(--primary-light);
+  color: var(--primary);
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+}
+
+.brand-tagline {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Navigasi Utama */
+.nav-tabs {
+  display: flex;
+  background: var(--bg-subtle);
+  padding: 0.25rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  gap: 0.25rem;
+}
+
+.nav-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.nav-tab-btn:hover {
+  color: var(--text-main);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+html.dark .nav-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-tab-btn.active {
+  background: var(--bg-surface);
+  color: var(--primary);
+  box-shadow: var(--shadow-sm);
+  font-weight: 700;
+}
+
+html.dark .nav-tab-btn.active {
+  background: var(--bg-surface-elevated);
+  color: #f87171;
+}
+
+/* Header Kanan (Status & Tombol Aksi) */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cloud-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius-full);
+  background: var(--success-light);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.cloud-status-badge.offline {
+  background: var(--accent-amber-light);
+  color: var(--accent-amber);
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  animation: pulseDot 2s infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(0.85); }
+}
+
+.clock-display {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-subtle);
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.theme-toggle-btn {
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle-btn:hover {
+  background: var(--border-color);
+}
+
+/* ===================================================
+   MAIN WORKSPACE CONTAINER
+   =================================================== */
+.main-workspace {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.view-pane {
+  display: none;
+  width: 100%;
+  height: 100%;
+  animation: fadeIn 0.2s ease;
+}
+
+.view-pane.active {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===================================================
+   KASIR (POS) VIEW LAYOUT
+   =================================================== */
+.pos-layout {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Kolom Kiri: Katalog Menu */
+.pos-menu-catalog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-app);
+  border-right: 1px solid var(--border-color);
+}
+
+.catalog-header-bar {
+  padding: 1rem 1.5rem 0.75rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.catalog-search-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.65rem 1rem 0.65rem 2.6rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.search-input:focus {
+  border-color: var(--primary);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Kategori Chips */
+.category-chips-list {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: none;
+}
+
+.category-chips-list::-webkit-scrollbar {
+  display: none;
+}
+
+.category-chip {
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all var(--transition-fast);
+}
+
+.category-chip:hover {
+  background: var(--border-color);
+  color: var(--text-main);
+}
+
+.category-chip.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: var(--shadow-primary);
+}
+
+/* Grid Menu Cards */
+.menu-grid-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 1.1rem;
+  align-content: start;
+}
+
+.menu-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+  cursor: pointer;
+  position: relative;
+}
+
+.menu-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+
+.menu-card-img-wrapper {
+  position: relative;
+  width: 100%;
+  height: 130px;
+  background: #2a3447;
+  overflow: hidden;
+}
+
+.menu-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.menu-card:hover .menu-card-img {
+  transform: scale(1.06);
+}
+
+.menu-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  background: linear-gradient(135deg, #fee2e2, #fed7aa);
+}
+
+html.dark .menu-card-placeholder {
+  background: linear-gradient(135deg, #2d1b1b, #382414);
+}
+
+.menu-badge-container {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  z-index: 2;
+}
+
+.badge-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(8px);
+}
+
+.badge-tag.bestseller {
+  background: rgba(245, 158, 11, 0.95);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.4);
+}
+
+.badge-tag.spicy {
+  background: rgba(239, 68, 68, 0.95);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+}
+
+.menu-card-body {
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.menu-card-code {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.15rem;
+}
+
+.menu-card-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.3;
+  margin-bottom: 0.35rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.menu-card-desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin-bottom: 0.75rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+.menu-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.menu-card-price {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: -0.01em;
+}
+
+.menu-add-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--primary-light);
+  color: var(--primary);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.menu-card:hover .menu-add-btn {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* ===================================================
+   PANEL KANAN: BILLING & KERANJANG KASIR
+   =================================================== */
+.pos-billing-panel {
+  background: var(--bg-surface);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.03);
+}
+
+.billing-header {
+  padding: 1rem 1.25rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-subtle);
+}
+
+.billing-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.billing-title-row h2 {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.clear-cart-btn {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.clear-cart-btn:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Pemilihan Tipe Pesanan & Meja */
+.order-type-selector {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--bg-surface);
+  padding: 0.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  gap: 0.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.type-btn {
+  padding: 0.45rem 0.25rem;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.type-btn.active {
+  background: var(--primary);
+  color: white;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+}
+
+.order-meta-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.order-meta-input, .order-meta-select {
+  padding: 0.45rem 0.75rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+}
+
+.order-meta-select {
+  flex: 0 0 110px;
+}
+
+.order-meta-input {
+  flex: 1;
+}
+
+/* List Item di Keranjang */
+.cart-items-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cart-empty-state {
+  margin: auto;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem 1rem;
+}
+
+.cart-empty-state .icon {
+  font-size: 3rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.6;
+}
+
+.cart-item-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 0.7rem;
+  gap: 0.4rem;
+  transition: border-color var(--transition-fast);
+}
+
+.cart-item-card:hover {
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.cart-item-main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cart-item-info {
+  flex: 1;
+}
+
+.cart-item-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+}
+
+.cart-item-unit-price {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cart-item-subtotal {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--primary);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.cart-item-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--border-color);
+}
+
+.qty-counter {
+  display: flex;
+  align-items: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.qty-btn {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.qty-btn:hover {
+  background: var(--border-color);
+}
+
+.qty-val {
+  min-width: 28px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cart-item-notes-btn {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.cart-item-notes-btn:hover {
+  color: var(--primary);
+}
+
+/* Ringkasan Biaya & Tombol Bayar */
+.billing-summary-footer {
+  padding: 1rem 1.25rem;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.summary-row.total-row {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.2rem;
+}
+
+.summary-row.total-row .grand-total-val {
+  color: var(--primary);
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.checkout-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  color: white;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: 1rem;
+  font-weight: 800;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  box-shadow: var(--shadow-primary);
+  transition: all var(--transition-fast);
+}
+
+.checkout-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px -4px rgba(220, 38, 38, 0.45);
+}
+
+.checkout-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ===================================================
+   MODAL DIALOG (PEMBAYARAN & STRUK)
+   =================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-normal);
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  transform: scale(0.95);
+  transition: transform var(--transition-normal);
+}
+
+.modal-overlay.active .modal-card {
+  transform: scale(1);
+}
+
+.modal-header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-subtle);
+}
+
+.modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.modal-close-btn:hover {
+  background: var(--border-color);
+  color: var(--text-main);
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Pilihan Metode Bayar di Modal */
+.payment-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.pay-tab-btn {
+  padding: 0.65rem 0.5rem;
+  background: var(--bg-subtle);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all var(--transition-fast);
+}
+
+.pay-tab-btn.active {
+  background: var(--primary-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Tombol Cepat Pecahan Uang */
+.quick-cash-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+}
+
+.quick-cash-btn {
+  padding: 0.55rem;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.quick-cash-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--bg-surface);
+}
+
+.input-money-field {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-align: right;
+  color: var(--text-main);
+  background: var(--bg-subtle);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  outline: none;
+  font-family: inherit;
+  transition: border-color var(--transition-fast);
+}
+
+.input-money-field:focus {
+  border-color: var(--primary);
+}
+
+.kembalian-display-box {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  background: var(--success-light);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.kembalian-display-box.kurang {
+  background: var(--primary-light);
+  border-color: rgba(220, 38, 38, 0.3);
+}
+
+.kembalian-display-box .label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.kembalian-display-box .val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.kembalian-display-box.kurang .val {
+  color: var(--danger);
+}
+
+/* QRIS Mockup Display */
+.qris-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem;
+  background: white;
+  border-radius: var(--radius-lg);
+  border: 2px dashed #cbd5e1;
+  text-align: center;
+  color: #0f172a;
+}
+
+.qris-qr-img {
+  width: 180px;
+  height: 180px;
+  background: #f1f5f9;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  border: 1px solid #e2e8f0;
+}
+
+/* ===================================================
+   STRUK BELANJA THERMAL RECEIPT
+   =================================================== */
+.receipt-paper-wrapper {
+  background: #f8fafc;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: center;
+}
+
+.receipt-thermal {
+  width: 320px;
+  background: #ffffff;
+  color: #000000;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 12px;
+  padding: 20px 15px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  line-height: 1.4;
+  border-top: 4px solid var(--primary);
+}
+
+.receipt-thermal .shop-title {
+  text-align: center;
+  font-size: 15px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.receipt-thermal .shop-sub {
+  text-align: center;
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+
+.receipt-thermal .divider-dashed {
+  border-top: 1px dashed #000;
+  margin: 8px 0;
+}
+
+.receipt-thermal .divider-double {
+  border-top: 2px dashed #000;
+  margin: 8px 0;
+}
+
+.receipt-thermal .meta-line {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.receipt-thermal .item-line {
+  margin-bottom: 6px;
+}
+
+.receipt-thermal .item-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.receipt-thermal .item-calc {
+  font-size: 10px;
+  color: #333;
+}
+
+.receipt-thermal .total-line {
+  display: flex;
+  justify-content: space-between;
+  font-weight: bold;
+}
+
+.receipt-thermal .grand-total {
+  font-size: 14px;
+}
+
+.receipt-thermal .footer-text {
+  text-align: center;
+  font-size: 10px;
+  margin-top: 12px;
+  white-space: pre-line;
+}
+
+/* ===================================================
+   PANE LAINNYA: PESANAN, MEJA, MENU, LAPORAN, SETTING
+   =================================================== */
+.content-pane-container {
+  flex: 1;
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.pane-header-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pane-header-title h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.pane-header-title p {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* Grid Meja Dine-In */
+.tables-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1.25rem;
+}
+
+.table-card {
+  background: var(--bg-surface);
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  transition: all var(--transition-fast);
+}
+
+.table-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+.table-card.empty {
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.table-card.occupied {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.03);
+}
+
+.table-num-badge {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 0.5rem;
+}
+
+.table-card.empty .table-num-badge {
+  background: var(--success-light);
+  color: var(--success);
+}
+
+.table-card.occupied .table-num-badge {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+/* Tabel Riwayat Pesanan */
+.data-table-wrapper {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.data-table th {
+  background: var(--bg-subtle);
+  padding: 0.85rem 1rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.data-table td {
+  padding: 0.9rem 1rem;
+  font-size: 0.85rem;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+}
+
+.data-table tr:hover td {
+  background: var(--bg-subtle);
+}
+
+/* Kartu Statistik Laporan */
+.stats-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+.stat-val {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ===================================================
+   RESPONSIVE DESIGN (TABLET & MOBILE)
+   =================================================== */
+@media (max-width: 1024px) {
+  .pos-layout {
+    grid-template-columns: 1fr 360px;
+  }
+}
+
+@media (max-width: 768px) {
+  #app {
+    height: auto;
+    min-height: 100vh;
+    overflow: auto;
+  }
+  .pos-layout {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+  }
+  .pos-menu-catalog {
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+  .nav-tabs {
+    overflow-x: auto;
+  }
+}
+
+/* ===================================================
+   PRINT STYLES (@MEDIA PRINT) UNTUK STRUK KASIR
+   =================================================== */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-receipt, #printable-receipt * {
+    visibility: visible;
+  }
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+}
