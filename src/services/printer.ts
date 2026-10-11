@@ -74,29 +74,52 @@ export async function receiptPayload(order:Order,settings:OutletSettings,printer
   }
 }
 
+class PrinterSpooler {
+  private chains = new Map<string, Promise<unknown>>()
+
+  run<T>(printerId: string, action: () => Promise<T>): Promise<T> {
+    const previous = this.chains.get(printerId) ?? Promise.resolve()
+    const next = previous.then(action, action)
+    this.chains.set(printerId, next.catch(() => undefined))
+    return next.finally(() => {
+      if (this.chains.get(printerId) === next) {
+        this.chains.delete(printerId)
+      }
+    })
+  }
+}
+
+const spooler = new PrinterSpooler()
+
 async function executeJob(job:PrintJob,printer:PrinterConfig){
-  const printing={...job,status:'printing' as const,attempts:job.attempts+1,updatedAt:new Date().toISOString(),lastError:undefined};await updatePrintJob(printing)
-  try{
-    if(printer.transport==='web-bluetooth'){
-      await writeWebBluetooth(encodeEscPos(job.payload))
-    }else if(printer.transport==='web-serial'){
-      await writeWebSerial(encodeEscPos(job.payload))
-    }else if(usesBridge(printer)){
-      if(!printer.deviceName)throw new Error('printer-windows-belum-dipilih')
-      await bridgePrint(job.id,printer.deviceName,encodeEscPos(job.payload))
-    }else if(printer.transport==='browser'){
-      throw new Error('browser-print-fallback')
-    }else{
-      const ensured=await ensurePrinter(printer);if(!ensured.ok)throw new Error(ensured.reason)
-      if(job.kind==='receipt')await EscPosPrinter.printReceipt({payload:job.payload})
-      else await EscPosPrinter.printKitchenTicket({payload:job.payload})
-    }
-    const printed={...printing,status:'printed' as const,updatedAt:new Date().toISOString()};await updatePrintJob(printed);void prunePrintJobs();return {ok:true,job:printed,reason:undefined}
-  }catch(error){const failed={...printing,status:'failed' as const,updatedAt:new Date().toISOString(),lastError:error instanceof Error?error.message:String(error)};await updatePrintJob(failed);return {ok:false,reason:failed.lastError,job:failed}}
+  return spooler.run(printer.id, async () => {
+    const printing={...job,status:'printing' as const,attempts:job.attempts+1,updatedAt:new Date().toISOString(),lastError:undefined};await updatePrintJob(printing)
+    try{
+      if(printer.transport==='web-bluetooth'){
+        await writeWebBluetooth(encodeEscPos(job.payload))
+      }else if(printer.transport==='web-serial'){
+        await writeWebSerial(encodeEscPos(job.payload))
+      }else if(usesBridge(printer)){
+        if(!printer.deviceName)throw new Error('printer-windows-belum-dipilih')
+        await bridgePrint(job.id,printer.deviceName,encodeEscPos(job.payload))
+      }else if(printer.transport==='browser'){
+        throw new Error('browser-print-fallback')
+      }else{
+        const ensured=await ensurePrinter(printer);if(!ensured.ok)throw new Error(ensured.reason)
+        if(job.kind==='receipt')await EscPosPrinter.printReceipt({payload:job.payload})
+        else await EscPosPrinter.printKitchenTicket({payload:job.payload})
+      }
+      const printed={...printing,status:'printed' as const,updatedAt:new Date().toISOString()};await updatePrintJob(printed);void prunePrintJobs();return {ok:true,job:printed,reason:undefined}
+    }catch(error){const failed={...printing,status:'failed' as const,updatedAt:new Date().toISOString(),lastError:error instanceof Error?error.message:String(error)};await updatePrintJob(failed);return {ok:false,reason:failed.lastError,job:failed}}
+  })
 }
 
 async function enqueueAndPrint(kind:PrintJob['kind'],order:Order,printer:PrinterConfig,payload:Record<string,unknown>,idempotent=false){
-  const id=idempotent?`print-${order.id}-${kind}-${printer.id}`:uid('print');if(idempotent){const existing=(await readPrintJobs()).find(x=>x.id===id&&['printing','printed'].includes(x.status));if(existing)return {ok:true,job:existing,duplicate:true,reason:undefined}}
+  const id=idempotent?`print-${order.id}-${kind}-${printer.id}`:uid('print')
+  if(idempotent){
+    const existing=(await readPrintJobs()).find(x=>x.id===id)
+    if(existing&&existing.status==='printed')return {ok:true,job:existing,duplicate:true,reason:undefined}
+  }
   const now=new Date().toISOString();const job:PrintJob={id,printerId:printer.id,printerName:printer.name,kind,orderId:order.id,orderNumber:order.number,status:'pending',attempts:0,createdAt:now,updatedAt:now,payload};await savePrintJob(job);return executeJob(job,printer)
 }
 
@@ -139,6 +162,26 @@ export async function testNativePrint(printer:PrinterConfig,settings:OutletSetti
   if(printer.printLogo&&design.showLogo&&design.logoUrl){try{logoRaster=await createMonochromeRaster(design.logoUrl,design.logoWidthMm,printer.paperWidth,design.rasterMode,design.rasterThreshold,printer.printWidthDots)}catch{/* calibration continues */}}
   await EscPosPrinter.testPrint({payload:{paperWidth:printer.paperWidth,printWidthDots:printer.printWidthDots??(printer.paperWidth===58?384:576),characterSet:printer.characterSet??'CP437',brand:settings.brandName,deviceName:printer.deviceName,logoRaster,cutPaper:printer.cutPaper,feedLines:design.feedLines}})
   return {ok:true}
+}
+
+export async function recoverPrintJobs(): Promise<PrintJob[]> {
+  const jobs = await readPrintJobs()
+  const staleBefore = Date.now() - 30_000
+  const recovered: PrintJob[] = []
+  for (const job of jobs) {
+    if (job.status !== 'printing') continue
+    const updated = new Date(job.updatedAt || job.createdAt).getTime()
+    if (updated >= staleBefore) continue
+    const uncertain: PrintJob = {
+      ...job,
+      status: 'uncertain',
+      lastError: 'Aplikasi terhenti saat proses cetak. Periksa struk fisik sebelum melakukan cetak ulang.',
+      updatedAt: new Date().toISOString(),
+    }
+    await updatePrintJob(uncertain)
+    recovered.push(uncertain)
+  }
+  return recovered
 }
 
 export async function listPrintJobs(){return readPrintJobs()}

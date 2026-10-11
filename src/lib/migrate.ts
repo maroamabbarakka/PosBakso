@@ -1,6 +1,6 @@
-import { defaultPrinters, defaultRoles, emptyProductionData, normalizeSettings } from '../data/defaults'
-import type { AppData, KitchenStation, KitchenStatus, Order, PrinterConfig } from '../types'
-import { localDateKey } from './format'
+import { defaultPrinters, defaultRoles, emptyProductionData, normalizeSettings } from '../data/defaults.ts'
+import type { AppData, KitchenStation, KitchenStatus, Order, PrinterConfig } from '../types.ts'
+import { localDateKey } from './format.ts'
 
 export const CURRENT_SCHEMA_VERSION=4
 

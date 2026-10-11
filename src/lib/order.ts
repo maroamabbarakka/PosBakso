@@ -1,4 +1,4 @@
-import type { CartItem, Order, Payment, PaymentMethod } from '../types'
+import type { CartItem, Order, Payment, PaymentMethod } from '../types.ts'
 
 export const paymentLabels:Record<PaymentMethod,string>={cash:'Tunai',qris:'QRIS',transfer:'Transfer',card:'Kartu',other:'Lainnya'}
 

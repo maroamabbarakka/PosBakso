@@ -1,4 +1,4 @@
-import type { AppData, PrintJob } from '../types'
+import type { AppData, PrintJob } from '../types.ts'
 
 const DB_NAME = 'posbakso-v2'
 const DB_VERSION = 2
@@ -24,18 +24,53 @@ function supportsIndexedDb() {
   return typeof window !== 'undefined' && 'indexedDB' in window
 }
 
+let databasePromise: Promise<IDBDatabase> | null = null
+
 function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
+  if (databasePromise) return databasePromise
+  databasePromise = new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
     request.onupgradeneeded = () => {
       const db = request.result
       if (!db.objectStoreNames.contains(SNAPSHOT_STORE)) db.createObjectStore(SNAPSHOT_STORE)
-      if (!db.objectStoreNames.contains(QUEUE_STORE)) db.createObjectStore(QUEUE_STORE, { keyPath: 'id' })
+      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
+        const store = db.createObjectStore(QUEUE_STORE, { keyPath: 'id' })
+        store.createIndex('collection', 'collection')
+        store.createIndex('batchId', 'batchId')
+        store.createIndex('createdAt', 'createdAt')
+      }
       if (!db.objectStoreNames.contains(DEAD_STORE)) db.createObjectStore(DEAD_STORE, { keyPath: 'id' })
       if (!db.objectStoreNames.contains(PRINT_STORE)) db.createObjectStore(PRINT_STORE, { keyPath: 'id' })
     }
     request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
+    request.onerror = () => {
+      databasePromise = null
+      reject(request.error)
+    }
+  })
+  return databasePromise
+}
+
+/**
+ * Menyimpan business state (snapshot) dan outbox mutation dalam SATU transaksi atomik IndexedDB.
+ * Durability barrier: jika salah satu gagal, seluruh transaksi di-abort.
+ */
+export async function commitLocalCommand(nextState: AppData, mutations: SyncMutation[]): Promise<void> {
+  if (!supportsIndexedDb()) return
+  const db = await openDb()
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction([SNAPSHOT_STORE, QUEUE_STORE], 'readwrite')
+    tx.objectStore(SNAPSHOT_STORE).put(nextState, 'app')
+    const queue = tx.objectStore(QUEUE_STORE)
+    for (const mutation of mutations) {
+      queue.put({
+        ...mutation,
+        attempts: mutation.attempts ?? 0,
+      })
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error ?? new Error('Penyimpanan lokal gagal'))
+    tx.onabort = () => reject(tx.error ?? new Error('Penyimpanan lokal dibatalkan'))
   })
 }
 
@@ -100,8 +135,34 @@ export async function retryDeadLetter(id:string):Promise<void>{
   const items=await readDeadLetters();const item=items.find(x=>x.id===id);if(!item)return
   await enqueueMutation({...item,lastError:undefined,nextRetryAt:undefined});await storeDelete(DEAD_STORE,id)
 }
-export async function getPendingSyncCount() { return (await readSyncQueue()).length }
-export async function getDeadLetterCount(){ return (await readDeadLetters()).length }
+export async function getPendingSyncCount(): Promise<number> {
+  if (!supportsIndexedDb()) return 0
+  try {
+    const db = await openDb()
+    return await new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(QUEUE_STORE, 'readonly')
+      const req = tx.objectStore(QUEUE_STORE).count()
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+  } catch {
+    return 0
+  }
+}
+export async function getDeadLetterCount(): Promise<number> {
+  if (!supportsIndexedDb()) return 0
+  try {
+    const db = await openDb()
+    return await new Promise<number>((resolve, reject) => {
+      const tx = db.transaction(DEAD_STORE, 'readonly')
+      const req = tx.objectStore(DEAD_STORE).count()
+      req.onsuccess = () => resolve(req.result)
+      req.onerror = () => reject(req.error)
+    })
+  } catch {
+    return 0
+  }
+}
 
 export async function savePrintJob(job:PrintJob):Promise<void>{ try{await storePut(PRINT_STORE,job)}catch{/* printing can still proceed */} }
 export async function readPrintJobs():Promise<PrintJob[]>{ return (await storeAll<PrintJob>(PRINT_STORE)).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)) }

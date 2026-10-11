@@ -342,7 +342,7 @@ export interface AppData {
   audit: AuditEvent[]
 }
 
-export type PrintJobStatus = 'pending' | 'printing' | 'printed' | 'failed'
+export type PrintJobStatus = 'pending' | 'printing' | 'printed' | 'failed' | 'uncertain'
 export type PrintJobKind = 'receipt' | 'kitchen' | 'bar' | 'test'
 export interface PrintJob {
   id: string

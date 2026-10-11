@@ -1,4 +1,4 @@
-import type { AppData, OutletSettings, PrinterConfig, Permission, RoleDefinition } from '../types'
+import type { AppData, OutletSettings, PrinterConfig, Permission, RoleDefinition } from '../types.ts'
 
 
 const allPermissions: Permission[] = [
