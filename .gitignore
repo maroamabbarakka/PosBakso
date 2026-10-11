@@ -2,6 +2,10 @@ node_modules
 dist
 .env
 .env.local
+.firebase-bootstrap-users.json
+bridge/.bridge-state.json
 .firebase
 firebase-debug.log
 .DS_Store
+.codex-video-frames
+*.tsbuildinfo

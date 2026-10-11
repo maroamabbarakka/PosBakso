@@ -88,6 +88,14 @@ export async function moveSyncMutationToDeadLetter(mutation:SyncMutation,error:s
   try{await storePut(DEAD_STORE,failed);await storeDelete(QUEUE_STORE,mutation.id)}catch{/* leave queued if dead-letter write fails */}
 }
 export async function readDeadLetters():Promise<SyncMutation[]>{ return storeAll<SyncMutation>(DEAD_STORE) }
+/** Removes legacy cloud mutations for data that is now intentionally device-local. */
+export async function purgeLocalOnlyMutations(collections:string[]):Promise<void>{
+  if(!supportsIndexedDb()||!collections.length)return
+  const blocked=new Set(collections)
+  try{
+    const db=await openDb();await new Promise<void>((resolve,reject)=>{const tx=db.transaction([QUEUE_STORE,DEAD_STORE],'readwrite');for(const name of [QUEUE_STORE,DEAD_STORE]){const store=tx.objectStore(name);const request=store.openCursor();request.onsuccess=()=>{const cursor=request.result;if(!cursor)return;const value=cursor.value as SyncMutation;if(blocked.has(value.collection))cursor.delete();cursor.continue()}}tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)})
+  }catch{/* A stale local-only mutation may remain visible until the next load. */}
+}
 export async function retryDeadLetter(id:string):Promise<void>{
   const items=await readDeadLetters();const item=items.find(x=>x.id===id);if(!item)return
   await enqueueMutation({...item,lastError:undefined,nextRetryAt:undefined});await storeDelete(DEAD_STORE,id)

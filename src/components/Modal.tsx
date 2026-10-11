@@ -6,13 +6,15 @@ const focusableSelector='button:not([disabled]), [href], input:not([disabled]), 
 export function Modal({ open, title, subtitle, children, onClose, size = 'md' }:{open:boolean;title:string;subtitle?:string;children:ReactNode;onClose:()=>void;size?:'sm'|'md'|'lg'|'xl'}) {
   const panelRef=useRef<HTMLElement>(null)
   const previousFocus=useRef<HTMLElement|null>(null)
+  const closeRef=useRef(onClose)
+  closeRef.current=onClose
   const titleId=useId();const subtitleId=useId()
   useEffect(()=>{
     if(!open)return
     previousFocus.current=document.activeElement instanceof HTMLElement?document.activeElement:null
     const timer=window.setTimeout(()=>{const panel=panelRef.current;const first=panel?.querySelector<HTMLElement>(focusableSelector);(first??panel)?.focus()},0)
     const keydown=(event:KeyboardEvent)=>{
-      if(event.key==='Escape'){event.preventDefault();onClose();return}
+      if(event.key==='Escape'){event.preventDefault();closeRef.current();return}
       if(event.key!=='Tab'||!panelRef.current)return
       const nodes=[...panelRef.current.querySelectorAll<HTMLElement>(focusableSelector)].filter(x=>x.offsetParent!==null)
       if(!nodes.length){event.preventDefault();panelRef.current.focus();return}
@@ -22,7 +24,7 @@ export function Modal({ open, title, subtitle, children, onClose, size = 'md' }:
     }
     document.addEventListener('keydown',keydown)
     return()=>{window.clearTimeout(timer);document.removeEventListener('keydown',keydown);previousFocus.current?.focus()}
-  },[open,onClose])
+  },[open])
   if (!open) return null
   return <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={subtitle?subtitleId:undefined}>
     <button className="modal-scrim" onClick={onClose} aria-label="Tutup dialog" tabIndex={-1}/>

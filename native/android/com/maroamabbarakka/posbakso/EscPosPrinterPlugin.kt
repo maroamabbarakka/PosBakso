@@ -30,6 +30,7 @@ class EscPosPrinterPlugin : Plugin() {
     private var output: OutputStream? = null
     private var charset: Charset = Charset.forName("CP437")
     private var codePage: Int = 0
+    private var lastConnectedAddress: String? = null
     private val io = Executors.newSingleThreadExecutor()
 
     @PluginMethod fun getStatus(call: PluginCall) {
@@ -50,6 +51,7 @@ class EscPosPrinterPlugin : Plugin() {
             try {
                 disconnectInternal(); val adapter = BluetoothAdapter.getDefaultAdapter() ?: throw IllegalStateException("Bluetooth tidak tersedia")
                 val device: BluetoothDevice = adapter.getRemoteDevice(address); val newSocket = device.createRfcommSocketToServiceRecord(sppUuid); newSocket.connect(); socket = newSocket; output = newSocket.outputStream
+                lastConnectedAddress = address
                 val ret = JSObject(); ret.put("connected", true); ret.put("name", device.name ?: "Printer"); ret.put("address", address); call.resolve(ret)
             } catch (e: Exception) { disconnectInternal(); call.reject("Gagal menghubungkan printer: ${e.message}", e) }
         }
@@ -167,9 +169,25 @@ class EscPosPrinterPlugin : Plugin() {
         return out
     }
     private fun wrappedText(value:String,width:Int){wrapText(value,width).forEach{text(it+"\n")}}
-    private fun drawer(){raw(byteArrayOf(0x1B,0x70,0x00,0x19,0xFA.toByte()))}
-    private fun ensureConnected(){if(socket?.isConnected!=true||output==null)throw IllegalStateException("Printer belum terhubung")}
-    private fun initialize(){raw(byteArrayOf(0x1B,0x40));raw(byteArrayOf(0x1B,0x74,codePage.toByte()))}
+    private fun ensureConnected(){
+        if(socket?.isConnected == true && output != null) return
+        val addr = lastConnectedAddress
+        if(!addr.isNullOrBlank()){
+            try {
+                disconnectInternal()
+                val adapter = BluetoothAdapter.getDefaultAdapter() ?: throw IllegalStateException("Bluetooth tidak tersedia")
+                val device: BluetoothDevice = adapter.getRemoteDevice(addr)
+                val newSocket = device.createRfcommSocketToServiceRecord(sppUuid)
+                newSocket.connect()
+                socket = newSocket
+                output = newSocket.outputStream
+                return
+            } catch(_: Exception) {
+                disconnectInternal()
+            }
+        }
+        throw IllegalStateException("Printer belum terhubung atau mati")
+    }
     private fun align(value:String){when(value){"left"->center(false);"right"->raw(byteArrayOf(0x1B,0x61,0x02));else->center(true)}}
     private fun center(on:Boolean){raw(byteArrayOf(0x1B,0x61,if(on)1 else 0))}
     private fun bold(on:Boolean){raw(byteArrayOf(0x1B,0x45,if(on)1 else 0))}

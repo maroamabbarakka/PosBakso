@@ -87,6 +87,8 @@ export interface Order {
   type: OrderType
   tableName?: string
   customerName?: string
+  customerPhone?: string
+  customerEmail?: string
   note?: string
   status: OrderStatus
   /** Legacy aggregate status. New code derives this from stationStatus. */
@@ -225,13 +227,16 @@ export interface PrinterConfig {
   paperWidth: 58 | 80
   /** Actual printable head width. Common values: 384 (58mm), 512/576 (80mm). */
   printWidthDots?: number
-  transport: 'browser' | 'bluetooth' | 'usb' | 'network'
+  transport: 'auto' | 'local-bridge' | 'browser' | 'bluetooth' | 'usb' | 'network' | 'web-bluetooth' | 'web-serial'
+  /** Hardware profile. Bindings stay local to this device and are never synced to Firestore. */
+  profileId?: 'generic-58' | 'generic-80' | 'iware-x58bt2'
   deviceName?: string
   deviceAddress?: string
   autoPrint: boolean
   printLogo: boolean
   cutPaper: boolean
   openDrawer: boolean
+  drawerMode?: 'cash' | 'always' | 'never'
   routeCategories: string[]
   /** Cached hint only. Runtime status must come from native getStatus(). */
   connected: boolean

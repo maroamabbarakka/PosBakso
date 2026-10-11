@@ -6,25 +6,30 @@ Aplikasi Point of Sale full-custom untuk **Bakso Umum Khas Makassar**, dengan UI
 
 ## Fitur utama
 
-### Kasir
+### Kasir & Ergonomi Sentuh Cepat
 - Grid menu responsif, pencarian SKU/nama, kategori, indikator stok/habis.
+- **Keyboard Hotkeys**: `F2` (Pencarian Menu cepat), `F4` (Simpan / Tahan Pesanan), `F9` (Buka Pembayaran), `Esc` (Batal / Bersihkan).
+- **Virtual Touch Numpad**: Numpad sentuh kasir (1–9, 0, 000, C) langsung di layar modal pembayaran tanpa tergantung keyboard virtual OS.
+- **Tombol Uang Pas Instan**: Satu sentuhan langsung melunasi tanpa input manual, ditambah nominal lembaran uang rupiah.
+- **Web Audio Micro-Feedback**: Konfirmasi suara sintetis Web Audio API (suara add-to-cart lembut dan chime sukses lunas).
 - Dine In, Take Away, dan Delivery.
 - Manajemen meja; meja aktif otomatis ditandai terpakai.
 - Nama pelanggan untuk Take Away/Delivery.
-- Cart, qty, modifier/topping dan catatan per item, catatan pesanan, diskon berbasis permission, pajak/service opsional.
+- Cart, qty besar ramah sentuh, modifier/topping dan catatan per item, catatan pesanan, diskon berbasis permission, pajak/service opsional.
 - Hold/Save Order → buka kembali → lanjutkan → bayar.
 - Pembayaran Tunai, QRIS, Transfer, Kartu, dan Lainnya.
 - Pembayaran gabungan/split tender (mis. Tunai + QRIS) dengan rekonsiliasi metode pembayaran.
-- Shortcut uang tunai dan kembalian otomatis.
 - Shift wajib sebelum menerima pembayaran.
 - Nomor transaksi dan nomor antrean otomatis.
 - Auto-print customer receipt dan kitchen ticket sesuai konfigurasi printer.
 
-### Pesanan & Dapur
+### Pesanan & Dapur (Kitchen Display System - KDS)
 - Riwayat order, pencarian, filter status, detail transaksi.
 - Reprint struk dan kitchen ticket.
 - Void/refund dengan alasan, permission, audit log, reversal kas, dan pengembalian stok resep.
 - KDS: **Baru → Diproses → Siap → Disajikan**.
+- **Elapsed Time Badge Dinamis**: Indikator durasi antrean dapur dengan kode warna urgensi (Hijau <10 mnt, Oranye 10–20 mnt, Merah mendesak >20 mnt).
+- **Audio Bell Alert**: Bunyi lonceng otomatis saat ada tiket pesanan baru masuk ke dapur.
 - Status pembayaran dan status dapur dipisahkan sehingga order lunas tetap muncul di dapur sampai disajikan.
 
 ### Produk, resep, dan inventory
@@ -63,15 +68,18 @@ Aplikasi Point of Sale full-custom untuk **Bakso Umum Khas Makassar**, dengan UI
 - Audit Log untuk tindakan sensitif.
 - Firestore Rules berbasis profil user dan role.
 
-### Printer & Designer Struk
-- Preview/cetak browser untuk pengembangan/fallback.
-- Android Capacitor native bridge untuk Bluetooth Classic/SPP ESC/POS.
-- Scan paired device, connect, runtime socket status, auto reconnect, test print dan persistent print-job retry.
-- 58 mm / 80 mm dengan **printable head 384/512/576 dots atau nilai custom kelipatan 8**.
-- Designer struk: logo, posisi/lebar logo, threshold/dithering, judul/subjudul, judul dokumen, header/footer multi-baris, visibility fields, QR, CODE128, copies dan feed.
-- Logo dicetak raster monokrom 1-bit; QR/CODE128 memakai command native ESC/POS.
-- Printer kasir, dapur, dan minuman + routing kategori.
-- Customer receipt, Kitchen Order Ticket, dan delta ticket edit pesanan berbeda format.
+### Printer & Designer Struk (Multi-Device & Modern Transports)
+- **Multi-Transport Support**:
+  - **Android Native (Capacitor)**: Bluetooth Classic RFCOMM (SPP) dengan *Zero-Click Auto-Reconnect* saat printer portabel bangun dari mode sleep/standby.
+  - **Android Browser (Chrome PWA)**: *Web Bluetooth API* (`navigator.bluetooth`) GATT BLE cetak langsung dari browser tanpa PDF print dialog sistem.
+  - **Windows / PC Desktop (Chrome/Edge)**: *Web Serial API* (`navigator.serial`) via USB Thermal atau Virtual Bluetooth COM port tanpa server bridge background.
+  - **Windows Spooler Bridge**: Port 18181 untuk browser legacy (Firefox) atau jaringan lokal.
+  - **Browser Web Fallback**: Print preview modal dengan kalibrasi CSS `@page` 80mm/58mm.
+- **Safe Chunking & Flow Control**: Pengiriman data ESC/POS dengan kontrol chunk 100–128 byte dan jeda mikro untuk mencegah buffer overrun pada printer thermal portabel berbiaya terjangkau.
+- **Ukuran Kertas & Head Dots**: 58 mm / 80 mm dengan **printable head 384/512/576 dots atau nilai custom kelipatan 8**.
+- **Designer Struk**: Logo raster 1-bit, threshold/dithering, header/footer kustom, QR native, barcode CODE128, copies dan feed.
+- **Routing Dapur & Minuman**: Struk kasir, Kitchen Order Ticket (KOT), dan delta ticket saat edit pesanan terpisah otomatis.
+- **Print Job Queue Persisten**: Antrean cetak tersimpan di IndexedDB dengan fitur Retry manual jika printer kehabisan kertas.
 
 ### Offline & Firebase Spark
 - IndexedDB sebagai snapshot lokal dan mutation queue.

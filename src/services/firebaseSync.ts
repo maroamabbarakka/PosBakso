@@ -37,20 +37,21 @@ async function applySingle(mutation:SyncMutation){
 
 async function applyBatch(group:SyncMutation[]){
   if(!db)throw new Error('Firestore belum tersedia')
+  const firestore=db
   if(group.length===1&&!group[0].batchId){await applySingle(group[0]);return}
   const batchId=group[0].batchId
   if(batchId){
     // Idempotent domain commit: a replay after app/network crash must never apply stock/cash increments twice.
-    const markerRef=doc(db,'sync_events',batchId)
-    await runTransaction(db,async tx=>{
+    const markerRef=doc(firestore,'sync_events',batchId)
+    await runTransaction(firestore,async tx=>{
       const marker=await tx.get(markerRef)
       if(marker.exists())return
       const weighted=new Map<string,{stock:number;averageCost:number}>()
       for(const mutation of group.filter(m=>m.op==='weightedPurchase')){
-        const ref=doc(db,mutation.collection,mutation.docId);const snap=await tx.get(ref);const value=snap.exists()?snap.data():{};weighted.set(`${mutation.collection}/${mutation.docId}`,{stock:Number(value.stock??0),averageCost:Number(value.averageCost??0)})
+        const ref=doc(firestore,mutation.collection,mutation.docId);const snap=await tx.get(ref);const value=snap.exists()?snap.data():{};weighted.set(`${mutation.collection}/${mutation.docId}`,{stock:Number(value.stock??0),averageCost:Number(value.averageCost??0)})
       }
       for(const mutation of group){
-        const ref=doc(db,mutation.collection,mutation.docId)
+        const ref=doc(firestore,mutation.collection,mutation.docId)
         if(mutation.op==='delete'){tx.delete(ref);continue}
         if(mutation.op==='weightedPurchase'){
           const source=(mutation.payload??{}) as Record<string,unknown>;const weightedKey=`${mutation.collection}/${mutation.docId}`;const current=weighted.get(weightedKey)??{stock:0,averageCost:0};const qty=Number(source.qty??0);const unitCost=Number(source.unitCost??0);const nextStock=current.stock+qty;const averageCost=nextStock!==0?Math.round(((current.stock*current.averageCost)+(qty*unitCost))/nextStock):unitCost;tx.set(ref,{stock:nextStock,averageCost,updatedAt:source.updatedAt??mutation.createdAt},{merge:true});weighted.set(weightedKey,{stock:nextStock,averageCost});continue
@@ -66,9 +67,9 @@ async function applyBatch(group:SyncMutation[]){
     })
     return
   }
-  const batch=writeBatch(db)
+  const batch=writeBatch(firestore)
   for(const mutation of group){
-    const ref=doc(db,mutation.collection,mutation.docId)
+    const ref=doc(firestore,mutation.collection,mutation.docId)
     if(mutation.op==='delete'){batch.delete(ref);continue}
     if(mutation.op==='weightedPurchase')throw new Error('weightedPurchase wajib menggunakan idempotent transaction batch')
     if(mutation.op==='increment'){

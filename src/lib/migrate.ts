@@ -35,7 +35,11 @@ export function looksLikeDemoSnapshot(data:AppData){
 
 export function normalizeAppData(input:Partial<AppData>|null|undefined):AppData{
   const base=emptyProductionData();const data=input??{}
-  const printers=(Array.isArray(data.printers)&&data.printers.length?data.printers:defaultPrinters).map((p:PrinterConfig)=>({...p,connected:false,copies:p.copies??1,characterSet:p.characterSet??'CP437',printWidthDots:p.printWidthDots??(p.paperWidth===58?384:576)}))
+  const printers=(Array.isArray(data.printers)&&data.printers.length?data.printers:defaultPrinters).map((p:PrinterConfig)=>{
+    const legacyCashier=p.id==='printer-cashier'&&!p.profileId&&p.paperWidth===80&&p.deviceName!=='IWARE X58BT II'
+    if(legacyCashier)return {...defaultPrinters.find(x=>x.id==='printer-cashier')!,connected:false}
+    return {...p,connected:false,copies:p.copies??1,characterSet:p.characterSet??'CP437',printWidthDots:p.printWidthDots??(p.paperWidth===58?384:576)}
+  })
   return {
     ...base,...data,schemaVersion:CURRENT_SCHEMA_VERSION,
     products:Array.isArray(data.products)?data.products:[],ingredients:Array.isArray(data.ingredients)?data.ingredients:[],recipes:Array.isArray(data.recipes)?data.recipes:[],

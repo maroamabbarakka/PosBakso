@@ -20,7 +20,7 @@ function holdState(order: Order) {
   return { expired: false, text: mins < 60 ? `${mins} menit lagi` : `${Math.ceil(mins / 60)} jam lagi` }
 }
 
-export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) {
+export function OrdersPage({ onResume, onReorder }: { onResume?: (order: Order) => void; onReorder?: (order: Order) => void }) {
   const { data, can, voidOrder, refundOrder } = usePosStore()
   const [filter, setFilter] = useState<'all' | Order['status']>('all')
   const [query, setQuery] = useState('')
@@ -35,7 +35,8 @@ export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) 
       o.number.toLowerCase().includes(query.toLowerCase()) ||
       o.cashierName.toLowerCase().includes(query.toLowerCase()) ||
       o.tableName?.toLowerCase().includes(query.toLowerCase()) ||
-      o.customerName?.toLowerCase().includes(query.toLowerCase())
+      o.customerName?.toLowerCase().includes(query.toLowerCase()) ||
+      o.customerPhone?.includes(query) || o.customerEmail?.toLowerCase().includes(query.toLowerCase())
     ))
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt)), [data.orders, filter, query])
 
@@ -58,7 +59,7 @@ export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) 
         <thead><tr><th>Transaksi</th><th>Waktu</th><th>Order</th><th>Kasir</th><th>Status</th><th>Dapur</th><th className="right">Total</th><th/></tr></thead>
         <tbody>{orders.map(o => {
           const hold = holdState(o)
-          return <tr key={o.id} className={hold?.expired ? 'row-warning' : undefined}>
+          return <tr key={o.id} className={hold?.expired ? 'row-warning tappable-row' : 'tappable-row'} onClick={() => setSelected(o)}>
             <td><strong>{o.number}</strong><small>{o.queueNumber}</small></td>
             <td>{dateTimeId(o.createdAt)}</td>
             <td>{o.type === 'dine_in' ? `Dine In${o.tableName ? ' • ' + o.tableName : ''}` : o.type === 'takeaway' ? 'Bungkus' : 'Delivery'}{o.customerName && <small>{o.customerName}</small>}</td>
@@ -66,7 +67,7 @@ export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) 
             <td><span className={`status-badge ${o.status}`}>{statusLabel[o.status]}</span>{hold && <small className={hold.expired ? 'text-danger' : 'muted'}>{hold.text}</small>}</td>
             <td><span className={`status-badge kitchen-${o.kitchenStatus ?? 'new'}`}>{kitchenLabel[o.kitchenStatus ?? 'new']}</span></td>
             <td className="right"><strong>{rupiahCompact(o.total)}</strong></td>
-            <td className="right"><button className="icon-button" onClick={() => setSelected(o)}><Icon name="eye"/></button></td>
+            <td className="right"><button className="icon-button" onClick={event => { event.stopPropagation(); setSelected(o) }} aria-label={`Lihat ${o.number}`}><Icon name="eye"/></button></td>
           </tr>
         })}</tbody>
       </table>
@@ -90,6 +91,8 @@ export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) 
             <div><dt>Tipe</dt><dd>{selected.type}</dd></div>
             <div><dt>Meja</dt><dd>{selected.tableName ?? '-'}</dd></div>
             <div><dt>Pelanggan</dt><dd>{selected.customerName ?? '-'}</dd></div>
+            {selected.customerPhone&&<div><dt>WhatsApp</dt><dd>{selected.customerPhone}</dd></div>}
+            {selected.customerEmail&&<div><dt>Email</dt><dd>{selected.customerEmail}</dd></div>}
             <div><dt>Pembayaran</dt><dd>{paymentSummary(selected)}</dd></div>
           </dl>
         </div>
@@ -100,6 +103,7 @@ export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) 
         {selected.status === 'held' && onResume && <button className="primary" onClick={() => { onResume(selected); setSelected(null) }}><Icon name="cashier"/>Buka di Kasir</button>}
         {selected.status === 'held' && can('sale.void') && <button className="danger-button" onClick={() => requestVoid(selected, holdState(selected)?.expired ? 'Hold kedaluwarsa' : '')}>Batalkan Hold</button>}
         {selected.status === 'paid' && <button className="secondary" onClick={() => setReceipt(selected)}><Icon name="printer"/>Cetak Ulang</button>}
+        {selected.status === 'paid' && onReorder && <button className="primary" onClick={() => { onReorder(selected); setSelected(null) }}><Icon name="plus"/>Pesan Lagi</button>}
         {selected.status === 'paid' && can('sale.void') && <button className="danger-button" onClick={() => setAction('void')}>Void</button>}
         {selected.status === 'paid' && can('sale.refund') && <button className="danger-button" onClick={() => setAction('refund')}>Refund</button>}
       </div>
@@ -111,7 +115,7 @@ export function OrdersPage({ onResume }: { onResume?: (order: Order) => void }) 
       <button className="danger-button full" disabled={reason.trim().length < 3} onClick={() => { action === 'void' ? voidOrder(selected.id, reason) : refundOrder(selected.id, reason); setAction(null); setSelected(null); setReason('') }}>Konfirmasi {action === 'void' ? (selected.status === 'held' ? 'Pembatalan' : 'Void') : 'Refund'}</button>
     </Modal>}
 
-    {receipt && <Receipt order={receipt} settings={data.settings} paperWidth={data.printers.find(p => p.type === 'cashier')?.paperWidth ?? 80} printWidthDots={data.printers.find(p => p.type === 'cashier')?.printWidthDots} onClose={() => setReceipt(null)} onThermalPrint={can('sale.reprint') ? async () => { const printer = data.printers.find(p => p.type === 'cashier'); return printer ? printReceiptNative(receipt, data.settings, printer) : { ok: false, reason: 'Printer kasir belum dikonfigurasi' } } : undefined}/>} 
+    {receipt && <Receipt order={receipt} settings={data.settings} paperWidth={data.printers.find(p => p.type === 'cashier')?.paperWidth ?? 80} printWidthDots={data.printers.find(p => p.type === 'cashier')?.printWidthDots} printLogo={data.printers.find(p => p.type === 'cashier')?.printLogo ?? true} onClose={() => setReceipt(null)} onThermalPrint={can('sale.reprint') ? async () => { const printer = data.printers.find(p => p.type === 'cashier'); return printer ? printReceiptNative(receipt, data.settings, printer) : { ok: false, reason: 'Printer kasir belum dikonfigurasi' } } : undefined}/>}
     {kitchen && <KitchenTicket order={kitchen} settings={data.settings} onClose={() => setKitchen(null)}/>} 
   </div>
 }

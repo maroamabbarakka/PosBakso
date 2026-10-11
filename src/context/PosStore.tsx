@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { seedData } from '../data/seed'
 import { emptyProductionData, normalizeSettings } from '../data/defaults'
 import { looksLikeDemoSnapshot, normalizeAppData, normalizeOrder } from '../lib/migrate'
-import { enqueueMutation, enqueueMutations, getPendingSyncCount, loadSnapshot, readDeadLetters, readSyncQueue, retryDeadLetter, saveSnapshot, type SyncMutation } from '../lib/localDb'
+import { enqueueMutation, enqueueMutations, getPendingSyncCount, loadSnapshot, purgeLocalOnlyMutations, readDeadLetters, readSyncQueue, retryDeadLetter, saveSnapshot, type SyncMutation } from '../lib/localDb'
 import { flushFirebaseQueue } from '../services/firebaseSync'
 import { uid } from '../lib/format'
 import { paymentMethodAmount } from '../lib/order'
@@ -83,23 +83,24 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(() => typeof navigator === 'undefined' ? true : navigator.onLine)
   const [pendingSync, setPendingSync] = useState(0)
   const [syncFailures, setSyncFailures] = useState<SyncMutation[]>([])
-  const printerSyncTimers=useRef<Record<string,number>>({})
   const persistTimer = useRef<number | null>(null)
 
   const currentUser = useMemo(() => data.users.find(u => u.id === currentUserId && u.active) ?? null, [data.users, currentUserId])
   const currentRole = useMemo(() => data.roles.find(r => r.key === currentUser?.role), [data.roles, currentUser?.role])
+  const permissionKey = currentRole?.permissions.join('|') ?? ''
 
   const can = useCallback((permission: Permission) => Boolean(currentRole?.permissions.includes(permission)), [currentRole])
 
   useEffect(() => {
     let active = true
-    loadSnapshot().then(snapshot => {
+    loadSnapshot().then(async snapshot => {
       if (!active) return
       if (snapshot && (demoMode || !looksLikeDemoSnapshot(snapshot))) setData(normalizeAppData(snapshot))
       else if (!demoMode) setData(emptyProductionData())
       setHydrated(true)
-      getPendingSyncCount().then(setPendingSync)
-      readDeadLetters().then(setSyncFailures)
+      await purgeLocalOnlyMutations(['printers'])
+      setPendingSync(await getPendingSyncCount())
+      setSyncFailures(await readDeadLetters())
     })
     return () => { active = false }
   }, [])
@@ -119,21 +120,23 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!cloudSyncEnabled || !auth || !db) return
-    return onAuthStateChanged(auth, async firebaseUser => {
+    const activeAuth = auth
+    const activeDb = db
+    return onAuthStateChanged(activeAuth, async firebaseUser => {
       if (!firebaseUser) {
         setCurrentUserId(null)
         sessionStorage.removeItem('posbakso.currentUser')
         return
       }
       try {
-        const snap = await getDoc(doc(db, 'users', firebaseUser.uid))
+        const snap = await getDoc(doc(activeDb, 'users', firebaseUser.uid))
         if (!snap.exists()) {
-          await signOut(auth)
+          await signOut(activeAuth)
           return
         }
         const profile = { ...(snap.data() as UserProfile), id: firebaseUser.uid }
         if (!profile.active) {
-          await signOut(auth)
+          await signOut(activeAuth)
           return
         }
         setData(prev => ({ ...prev, users: prev.users.some(u=>u.id===profile.id) ? prev.users.map(u=>u.id===profile.id?profile:u) : [profile,...prev.users] }))
@@ -143,13 +146,13 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         const userAdmin = ['owner','manager'].includes(profile.role)
         const inventoryAccess = privileged || profile.role === 'warehouse'
         const results = await Promise.allSettled([
-          getDoc(doc(db, 'settings', 'outlet')),
+          getDoc(doc(activeDb, 'settings', 'outlet')),
           readCollection<Product>('products', 300),
           readCollection<Ingredient>('ingredients', 300),
           readCollection<AppData['recipes'][number]>('recipes', 300),
           readCollection<Order>('orders', 200, 'createdAt'),
           readCollection<Shift>('shifts', 100, 'openedAt'),
-          readCollection<PrinterConfig>('printers', 20),
+          Promise.resolve([] as PrinterConfig[]), // Printer bindings are local per device.
           readCollection<RoleDefinition>('roles', 20),
           userAdmin ? readCollection<UserProfile>('users', 100) : Promise.resolve([]),
           inventoryAccess ? readCollection<AppData['suppliers'][number]>('suppliers', 100) : Promise.resolve([]),
@@ -161,7 +164,6 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         setData(prev => {
           const val = <T,>(index:number, fallback:T):T => results[index].status === 'fulfilled' ? (results[index] as PromiseFulfilledResult<T>).value : fallback
           const settingsSnap = val(0, null as Awaited<ReturnType<typeof getDoc>> | null)
-          const remotePrinters=val(6, [] as PrinterConfig[])
           const remoteRoles=val(7, [] as RoleDefinition[])
           return {
             ...prev,
@@ -171,7 +173,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
             recipes:val(3, [] as AppData['recipes']),
             orders:val(4, [] as Order[]).map(normalizeOrder),
             shifts:val(5, [] as Shift[]),
-            printers:remotePrinters.length?remotePrinters:prev.printers,
+            printers:prev.printers,
             roles:remoteRoles.length?remoteRoles:prev.roles,
             users:userAdmin ? val(8, [] as UserProfile[]) : prev.users,
             suppliers:val(9, [] as AppData['suppliers']),
@@ -191,7 +193,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!cloudSyncEnabled || !db || !currentUserId) return
     const unsubs:Array<()=>void>=[]
-    const permissions=currentRole?.permissions??[]
+    const permissions=permissionKey ? permissionKey.split('|') as Permission[] : []
     const hasAny=(required:Permission[])=>required.some(permission=>permissions.includes(permission))
     const mergeCollection=<T extends {id:string}>(current:T[],remote:T[],pendingIds:Set<string>)=>{
       const map=new Map(current.map(item=>[item.id,item]))
@@ -223,10 +225,9 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
     unsubs.push(onSnapshot(query(collection(db,'products'),limit(500)),async snap=>{const pending=new Set((await pendingFor('products')).map(m=>m.docId));const remote=snap.docs.map(d=>({id:d.id,...d.data()} as Product));setData(prev=>({...prev,products:mergeCollection(prev.products,remote,pending)}))},noopError))
     unsubs.push(onSnapshot(query(collection(db,'recipes'),limit(500)),async snap=>{const pending=new Set((await pendingFor('recipes')).map(m=>m.docId));const remote=snap.docs.map(d=>({productId:d.id,...d.data()} as Recipe));setData(prev=>({...prev,recipes:mergeCollection(prev.recipes.map(r=>({id:r.productId,...r})),remote.map(r=>({id:r.productId,...r})),pending).map(({id:_id,...r})=>r as Recipe)}))},noopError))
     unsubs.push(onSnapshot(doc(db,'settings','outlet'),snap=>{if(snap.exists())setData(prev=>({...prev,settings:normalizeSettings(snap.data() as Partial<AppData['settings']>)}))},noopError))
-    unsubs.push(onSnapshot(query(collection(db,'printers'),limit(30)),async snap=>{const pending=new Set((await pendingFor('printers')).map(m=>m.docId));const remote=snap.docs.map(d=>({id:d.id,...d.data(),connected:false} as PrinterConfig));setData(prev=>({...prev,printers:mergeCollection(prev.printers,remote,pending)}))},noopError))
     if(hasAny(['shift.open','shift.close','report.view'])) unsubs.push(onSnapshot(query(collection(db,'shifts'),orderBy('openedAt','desc'),limit(200)),async snap=>{const pending=new Set((await pendingFor('shifts')).map(m=>m.docId));const remote=snap.docs.map(d=>({id:d.id,...d.data()} as Shift));setData(prev=>({...prev,shifts:mergeCollection(prev.shifts,remote,pending)}))},noopError))
     return()=>unsubs.forEach(unsub=>unsub())
-  },[currentRole,currentUserId])
+  },[currentUserId,permissionKey])
 
   useEffect(() => {
     if (!hydrated) return
@@ -511,13 +512,7 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
   const updatePrinter = useCallback((printer: PrinterConfig) => {
     const safe={...printer,connected:false}
     setData(prev => ({ ...prev, printers:prev.printers.some(p=>p.id===safe.id) ? prev.printers.map(p=>p.id===safe.id?safe:p) : [safe,...prev.printers] }))
-    if(printerSyncTimers.current[safe.id])window.clearTimeout(printerSyncTimers.current[safe.id])
-    printerSyncTimers.current[safe.id]=window.setTimeout(()=>{
-      queueDoc('printers',safe.id,safe)
-      addAudit('printer.save','printer',`Memperbarui konfigurasi ${safe.name}`,'info',safe.id)
-      delete printerSyncTimers.current[safe.id]
-    },700)
-  }, [addAudit, queueDoc])
+  }, [])
 
   const updateSettings = useCallback((settings: AppData['settings']) => {
     setData(prev => ({ ...prev, settings }))
@@ -535,7 +530,6 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
       ...data.products.map(item=>({id:uid('sync'),collection:'products',docId:item.id,op:'set' as const,payload:item,createdAt:now})),
       ...data.ingredients.map(item=>({id:uid('sync'),collection:'ingredients',docId:item.id,op:'set' as const,payload:item,createdAt:now})),
       ...data.recipes.map(item=>({id:uid('sync'),collection:'recipes',docId:item.productId,op:'set' as const,payload:item,createdAt:now})),
-      ...data.printers.map(item=>({id:uid('sync'),collection:'printers',docId:item.id,op:'set' as const,payload:{...item,connected:false},createdAt:now})),
       ...data.suppliers.map(item=>({id:uid('sync'),collection:'suppliers',docId:item.id,op:'set' as const,payload:item,createdAt:now})),
     ]
     await enqueueMutations(rest);setPendingSync(await getPendingSyncCount());await syncNow();return roleMutations.length+rest.length
@@ -562,7 +556,6 @@ export function PosStoreProvider({ children }: { children: ReactNode }) {
         ...normalized.shifts.map(x=>({collection:'shifts',docId:x.id,op:'set' as const,payload:x})),
         ...normalized.cashMovements.map(x=>({collection:'cash_movements',docId:x.id,op:'set' as const,payload:x})),
         ...normalized.stockMovements.map(x=>({collection:'stock_movements',docId:x.id,op:'set' as const,payload:x})),
-        ...normalized.printers.map(x=>({collection:'printers',docId:x.id,op:'set' as const,payload:{...x,connected:false}})),
         ...normalized.audit.map(x=>({collection:'audit_logs',docId:x.id,op:'set' as const,payload:x})),
       ]
       for(let i=0;i<mutations.length;i+=200)await queueBatch(mutations.slice(i,i+200))

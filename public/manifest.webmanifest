@@ -1,8 +1,14 @@
 {
   "name": "Bakso Umum Khas Makassar POS",
   "short_name": "Bakso Umum POS",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
+  "lang": "id-ID",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "categories": ["business", "finance", "productivity"],
   "background_color": "#f7f7f5",
   "theme_color": "#b42318",
   "icons": [

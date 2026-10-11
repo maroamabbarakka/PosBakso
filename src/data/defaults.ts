@@ -75,7 +75,7 @@ export const defaultOutletSettings: OutletSettings = {
 }
 
 export const defaultPrinters: PrinterConfig[] = [
-  {id:'printer-cashier',name:'Printer Kasir',type:'cashier',paperWidth:80,printWidthDots:576,transport:'bluetooth',deviceName:'',autoPrint:true,printLogo:true,cutPaper:true,openDrawer:false,routeCategories:[],connected:false,copies:1,characterSet:'CP437'},
+  {id:'printer-cashier',name:'IWARE X58BT II - Kasir',type:'cashier',paperWidth:58,printWidthDots:384,transport:'auto',profileId:'iware-x58bt2',deviceName:'IWARE X58BT II',autoPrint:true,printLogo:true,cutPaper:false,openDrawer:true,drawerMode:'cash',routeCategories:[],connected:false,copies:1,characterSet:'CP437'},
   {id:'printer-kitchen',name:'Printer Dapur',type:'kitchen',paperWidth:58,printWidthDots:384,transport:'bluetooth',deviceName:'',autoPrint:true,printLogo:false,cutPaper:false,openDrawer:false,routeCategories:['Bakso','Mie','Paket'],connected:false,copies:1,characterSet:'CP437'},
   {id:'printer-bar',name:'Printer Minuman',type:'bar',paperWidth:58,printWidthDots:384,transport:'bluetooth',deviceName:'',autoPrint:false,printLogo:false,cutPaper:false,openDrawer:false,routeCategories:['Minuman'],connected:false,copies:1,characterSet:'CP437'},
 ]

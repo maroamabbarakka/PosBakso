@@ -12,7 +12,6 @@ service cloud.firestore {
     function hasPermission(permission) { return roleExists() && permissions().hasAny([permission]); }
     function hasAnyPermission(required) { return roleExists() && permissions().hasAny(required); }
     function isOwner() { return activeUser() && roleKey() == 'owner'; }
-    function isManager() { return activeUser() && roleKey() == 'manager'; }
     function canRestore() { return isOwner() && hasPermission('backup.restore'); }
     function isNum(v) { return v is int || v is float; }
     function validMoney(v) { return isNum(v) && v >= 0; }
@@ -31,9 +30,9 @@ service cloud.firestore {
         request.resource.data.items is list && request.resource.data.items.size() > 0 && request.resource.data.items.size() <= 100 &&
         request.resource.data.createdAt is string && request.resource.data.updatedAt is string &&
         validMoney(request.resource.data.subtotal) && validMoney(request.resource.data.discount) &&
-        validMoney(request.resource.data.tax) && validMoney(request.resource.data.service) && validMoney(request.resource.data.total) &&
+        validMoney(request.resource.data.tax) && validMoney(request.resource.data['service']) && validMoney(request.resource.data.total) &&
         request.resource.data.discount <= request.resource.data.subtotal &&
-        request.resource.data.total == request.resource.data.subtotal - request.resource.data.discount + request.resource.data.tax + request.resource.data.service;
+        request.resource.data.total == request.resource.data.subtotal - request.resource.data.discount + request.resource.data.tax + request.resource.data['service'];
     }
 
     match /settings/{docId} {

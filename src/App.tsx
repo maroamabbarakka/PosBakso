@@ -1,21 +1,23 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
-import { CashierPage } from './pages/Cashier'
-import { DashboardPage } from './pages/Dashboard'
-import { KitchenPage } from './pages/Kitchen'
-import { ReportsPage } from './pages/Reports'
-import { OrdersPage } from './pages/Orders'
-import { ProductsPage } from './pages/Products'
-import { InventoryPage } from './pages/Inventory'
-import { ShiftsPage } from './pages/Shifts'
-import { UsersPage } from './pages/Users'
-import { PrinterSettingsPage } from './pages/PrinterSettings'
-import { SettingsPage } from './pages/Settings'
 import { LoginPage } from './pages/Login'
+import { PublicReceiptPage } from './pages/PublicReceipt'
 import { Icon, type IconName } from './components/Icon'
 import { usePosStore } from './context/PosStore'
 import type { NavKey, Order, Permission } from './types'
+
+const CashierPage=lazy(()=>import('./pages/Cashier').then(module=>({default:module.CashierPage})))
+const DashboardPage=lazy(()=>import('./pages/Dashboard').then(module=>({default:module.DashboardPage})))
+const KitchenPage=lazy(()=>import('./pages/Kitchen').then(module=>({default:module.KitchenPage})))
+const ReportsPage=lazy(()=>import('./pages/Reports').then(module=>({default:module.ReportsPage})))
+const OrdersPage=lazy(()=>import('./pages/Orders').then(module=>({default:module.OrdersPage})))
+const ProductsPage=lazy(()=>import('./pages/Products').then(module=>({default:module.ProductsPage})))
+const InventoryPage=lazy(()=>import('./pages/Inventory').then(module=>({default:module.InventoryPage})))
+const ShiftsPage=lazy(()=>import('./pages/Shifts').then(module=>({default:module.ShiftsPage})))
+const UsersPage=lazy(()=>import('./pages/Users').then(module=>({default:module.UsersPage})))
+const PrinterSettingsPage=lazy(()=>import('./pages/PrinterSettings').then(module=>({default:module.PrinterSettingsPage})))
+const SettingsPage=lazy(()=>import('./pages/Settings').then(module=>({default:module.SettingsPage})))
 
 const meta: Record<NavKey, {title:string; subtitle:string; permission?:Permission}> = {
   kasir:{title:'Kasir',subtitle:'Transaksi cepat untuk operasional harian',permission:'sale.create'},
@@ -54,11 +56,12 @@ export default function App(){
   const [menuOpen,setMenuOpen]=useState(false)
   const [requestOpenShift,setRequestOpenShift]=useState(false)
   const [resumeOrder,setResumeOrder]=useState<Order|null>(null)
+  const [reorderOrder,setReorderOrder]=useState<Order|null>(null)
   useEffect(()=>{if(!currentUser)return;const currentPermission=meta[active].permission;if(currentPermission&&!can(currentPermission)){const next=navOrder.find(k=>!meta[k].permission||can(meta[k].permission!));if(next)setActive(next)}},[currentUser,active,can])
   const page=useMemo(()=>{
     switch(active){
-      case'kasir':return <CashierPage resumeOrder={resumeOrder} onResumeHandled={()=>setResumeOrder(null)} onOpenShift={()=>{setRequestOpenShift(true);setActive('shift')}}/>
-      case'pesanan':return <OrdersPage onResume={order=>{setResumeOrder(order);setActive('kasir')}}/>
+      case'kasir':return <CashierPage resumeOrder={resumeOrder} reorderOrder={reorderOrder} onResumeHandled={()=>setResumeOrder(null)} onReorderHandled={()=>setReorderOrder(null)} onOpenShift={()=>{setRequestOpenShift(true);setActive('shift')}}/>
+      case'pesanan':return <OrdersPage onResume={order=>{setReorderOrder(null);setResumeOrder(order);setActive('kasir')}} onReorder={order=>{setResumeOrder(null);setReorderOrder(order);setActive('kasir')}}/>
       case'dapur':return <KitchenPage/>
       case'dashboard':return <DashboardPage/>
       case'laporan':return <ReportsPage/>
@@ -70,8 +73,9 @@ export default function App(){
       case'pengaturan':return <SettingsPage/>
       default:return null
     }
-  },[active,requestOpenShift,resumeOrder])
+  },[active,requestOpenShift,resumeOrder,reorderOrder])
+  if(location.pathname==='/nota')return <PublicReceiptPage/>
   if(!hydrated)return <div className="app-loading"><img src={data.settings.logoUrl||'/icon.svg'} alt=""/><strong>{data.settings.brandName||'POS'}</strong><span>Menyiapkan data lokal...</span></div>
   if(!currentUser)return <LoginPage/>
-  return <div className="app-shell"><Sidebar active={active} onNavigate={setActive} open={menuOpen} onClose={()=>setMenuOpen(false)}/><main className="app-main"><Topbar title={meta[active].title} subtitle={meta[active].subtitle} onMenu={()=>setMenuOpen(true)} onShiftClick={()=>setActive('shift')}/><div className="page-content">{page}</div></main><MobileBottomNav active={active} onNavigate={setActive} onMore={()=>setMenuOpen(true)}/></div>
+  return <div className="app-shell"><Sidebar active={active} onNavigate={setActive} open={menuOpen} onClose={()=>setMenuOpen(false)}/><main className="app-main"><Topbar title={meta[active].title} subtitle={meta[active].subtitle} onMenu={()=>setMenuOpen(true)} onShiftClick={()=>setActive('shift')}/><div className="page-content"><Suspense fallback={<div className="page-loading" role="status" aria-live="polite"><span/>Memuat modul…</div>}>{page}</Suspense></div></main><MobileBottomNav active={active} onNavigate={setActive} onMore={()=>setMenuOpen(true)}/></div>
 }
