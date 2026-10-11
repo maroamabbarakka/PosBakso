@@ -37,11 +37,16 @@ export async function openWebSerialPort(baudRate = 9600): Promise<any> {
   return activeSerialPort
 }
 
-export async function writeWebSerial(data: Uint8Array): Promise<void> {
+export async function writeWebSerial(data: Uint8Array, chunkSize = 128, delayMs = 12): Promise<void> {
   const port = await openWebSerialPort()
   const writer = port.writable.getWriter()
   try {
-    await writer.write(data)
+    for (let i = 0; i < data.length; i += chunkSize) {
+      await writer.write(data.slice(i, i + chunkSize))
+      if (delayMs > 0 && i + chunkSize < data.length) {
+        await new Promise(r => setTimeout(r, delayMs))
+      }
+    }
   } finally {
     writer.releaseLock()
   }

@@ -63,7 +63,7 @@ class EscPosPrinterPlugin : Plugin() {
         val payload = call.getObject("payload") ?: JSObject()
         io.execute {
             try {
-                ensureConnected(); configure(payload); initialize();
+                ensureConnected(); configure(payload); resetPrinter();
                 val raster = payload.getJSObject("logoRaster"); if (raster != null) { center(true); raster(raster); feed(1) }
                 center(true); bold(true); text((payload.optString("brand", "BAKSO UMUM")).uppercase()+"\n"); bold(false); text("TEST PRINT / CALIBRATION\n")
                 val width = width(payload); val dots=payload.optInt("printWidthDots",if(payload.optInt("paperWidth",80)==58)384 else 576)
@@ -75,12 +75,12 @@ class EscPosPrinterPlugin : Plugin() {
 
     @PluginMethod fun printReceipt(call: PluginCall) {
         val payload = call.getObject("payload") ?: run { call.reject("Payload struk tidak tersedia"); return }
-        io.execute { try { ensureConnected(); configure(payload); val copies=payload.optInt("copies",1).coerceIn(1,5); repeat(copies){ initialize(); renderReceipt(payload, it == 0); if(it < copies-1) feed(2) }; call.resolve() } catch (e: Exception) { call.reject("Cetak struk gagal: ${e.message}", e) } }
+        io.execute { try { ensureConnected(); configure(payload); val copies=payload.optInt("copies",1).coerceIn(1,5); repeat(copies){ resetPrinter(); renderReceipt(payload, it == 0); if(it < copies-1) feed(2) }; call.resolve() } catch (e: Exception) { call.reject("Cetak struk gagal: ${e.message}", e) } }
     }
 
     @PluginMethod fun printKitchenTicket(call: PluginCall) {
         val payload = call.getObject("payload") ?: run { call.reject("Payload kitchen ticket tidak tersedia"); return }
-        io.execute { try { ensureConnected(); configure(payload); val copies=payload.optInt("copies",1).coerceIn(1,5); repeat(copies){ initialize(); renderKitchen(payload); if(it < copies-1) feed(2) }; call.resolve() } catch (e: Exception) { call.reject("Cetak dapur gagal: ${e.message}", e) } }
+        io.execute { try { ensureConnected(); configure(payload); val copies=payload.optInt("copies",1).coerceIn(1,5); repeat(copies){ resetPrinter(); renderKitchen(payload); if(it < copies-1) feed(2) }; call.resolve() } catch (e: Exception) { call.reject("Cetak dapur gagal: ${e.message}", e) } }
     }
 
     private fun configure(p:JSObject){
@@ -132,9 +132,22 @@ class EscPosPrinterPlugin : Plugin() {
         val note=order.optString("note","");if(note.isNotBlank()){line('-',width);wrappedText("CATATAN: $note",width)};line('=',width);wrappedText("Kasir: ${order.optString("cashier","-")}",width);feed((p.getJSObject("design")?:JSObject()).optInt("feedLines",4).coerceIn(1,10));if(p.optBoolean("cutPaper",false))cut()
     }
 
+    private fun resetPrinter(){
+        raw(byteArrayOf(0x1B,0x40)) // ESC @ : Initialize printer
+        raw(byteArrayOf(0x1C,0x2E)) // FS . : Cancel Chinese character mode
+        raw(byteArrayOf(0x1B,0x74,0x00)) // ESC t 0 : Code table CP437
+    }
+
     private fun raster(obj:JSObject){
         val widthBytes=obj.optInt("widthBytes",0);val height=obj.optInt("height",0);val encoded=obj.optString("dataBase64","");if(widthBytes<=0||height<=0||encoded.isBlank())return
-        val data=Base64.decode(encoded,Base64.DEFAULT);val xL=(widthBytes and 0xFF).toByte();val xH=((widthBytes shr 8) and 0xFF).toByte();val yL=(height and 0xFF).toByte();val yH=((height shr 8) and 0xFF).toByte();raw(byteArrayOf(0x1D,0x76,0x30,0x00,xL,xH,yL,yH));raw(data)
+        val data=Base64.decode(encoded,Base64.DEFAULT);val xL=(widthBytes and 0xFF).toByte();val xH=((widthBytes shr 8) and 0xFF).toByte();val yL=(height and 0xFF).toByte();val yH=((height shr 8) and 0xFF).toByte()
+        raw(byteArrayOf(0x1D,0x76,0x30,0x00,xL,xH,yL,yH))
+        val chunkSize=256
+        for(i in data.indices step chunkSize){
+            val end=(i+chunkSize).coerceAtMost(data.size)
+            raw(data.copyOfRange(i,end))
+            try { Thread.sleep(8) } catch(_:Exception){}
+        }
     }
     private fun qr(value:String,size:Int){
         val bytes=value.toByteArray(Charsets.UTF_8);raw(byteArrayOf(0x1D,0x28,0x6B,0x04,0x00,0x31,0x41,0x32,0x00));raw(byteArrayOf(0x1D,0x28,0x6B,0x03,0x00,0x31,0x43,size.coerceIn(1,16).toByte()));raw(byteArrayOf(0x1D,0x28,0x6B,0x03,0x00,0x31,0x45,0x31));val len=bytes.size+3;raw(byteArrayOf(0x1D,0x28,0x6B,(len and 0xFF).toByte(),((len shr 8) and 0xFF).toByte(),0x31,0x50,0x30));raw(bytes);raw(byteArrayOf(0x1D,0x28,0x6B,0x03,0x00,0x31,0x51,0x30))

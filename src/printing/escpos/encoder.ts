@@ -14,9 +14,20 @@ export function encodeEscPos(payload:Payload):Uint8Array{
   const width=Number(payload.paperWidth)===80?48:IWARE_X58BT2_PROFILE.columns
   const out:number[]=[];const add=(...v:number[])=>out.push(...v);const text=(s:string)=>add(...bytes(`${s}\n`));
   const align=(n:number)=>add(ESC,0x61,n);const bold=(on:boolean)=>add(ESC,0x45,on?1:0);const size=(n:number)=>add(GS,0x21,n)
-  add(ESC,0x40);align(1)
+  // Inisialisasi printer & batalkan Chinese character mode agar printer Blueprint/POS-58 tidak mencetak huruf Mandarin acak
+  add(ESC,0x40);add(0x1C,0x2E);add(ESC,0x74,0x00);align(1)
   const raster=payload.logoRaster as Raster|null
-  if(raster?.dataBase64){const w=Math.min(raster.width,IWARE_X58BT2_PROFILE.safeRasterWidthDots);const rowBytes=Math.ceil(w/8);const raw=fromBase64(raster.dataBase64);add(GS,0x76,0x30,0,w&255,(w>>8)&255,raster.height&255,(raster.height>>8)&255,...raw.slice(0,rowBytes*raster.height))}
+  if(raster?.dataBase64 && raster.width>0 && raster.height>0){
+    const widthBytes=Math.ceil(raster.width/8);
+    const raw=fromBase64(raster.dataBase64);
+    const expectedBytes=widthBytes*raster.height;
+    if(raw.length>=expectedBytes){
+      const xL=widthBytes&0xFF;const xH=(widthBytes>>8)&0xFF;
+      const yL=raster.height&0xFF;const yH=(raster.height>>8)&0xFF;
+      add(GS,0x76,0x30,0,xL,xH,yL,yH,...raw.slice(0,expectedBytes));
+      add(0x0A);
+    }
+  }
   bold(true);text(payload.design?.headerTitle||payload.header?.brand||'STRUK');bold(false)
   for(const line of [payload.design?.headerSubtitle,...(payload.design?.headerLines??[]),payload.header?.address,payload.header?.phone].filter(Boolean))wrap(line,width).forEach(text)
   text('-'.repeat(width));align(0)
